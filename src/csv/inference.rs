@@ -1,33 +1,25 @@
-use crate::csv::csv::{Csv, CsvType, CsvWrapper};
+use crate::csv::csv_data::{CsvData, CsvType, CsvWrapper};
 use csv::StringRecord;
-use itertools::Itertools;
 use std::collections::HashMap;
 use std::num::ParseIntError;
 
-struct ColumnInference {
+/// a record of the inferred types for columns in a CSV
+pub struct ColumnInference {
     columns_to_types: HashMap<String, CsvType>,
 }
 
 impl ColumnInference {
-    fn from_csv(csv: Csv) -> ColumnInference {
+    /// build inference from a CSV
+    pub fn from_csv(csv: &CsvData) -> ColumnInference {
         let mut columns_to_types: HashMap<String, CsvType> = HashMap::new();
         for (i, header) in csv.headers.iter().enumerate() {
-            let t: Vec<CsvWrapper> = csv
-                .records
-                .iter()
-                .map(|s| parse(s.get(i).unwrap()))
-                .collect();
-            let types: Vec<CsvType> = t.iter().map(|s| s.get_type()).collect();
-            let unique_types: Vec<&CsvType> = types.iter().unique().collect();
-
-            if unique_types.len() == 1 {
-                columns_to_types.insert(String::from(header), unique_types[0].to_owned());
-            } else {
-                columns_to_types.insert(String::from(header), CsvType::String);
-            }
+            let t = get_type_of_column(&csv.records, i);
+            columns_to_types.insert(String::from(header), t);
         }
         ColumnInference { columns_to_types }
     }
+
+    /// get the type of a column, referenced by its string name
     pub fn get_type(&self, s: String) -> Option<&CsvType> {
         self.columns_to_types.get(s.as_str())
     }
@@ -37,6 +29,17 @@ fn parse(s: &str) -> CsvWrapper {
     is_numeric
         .map(CsvWrapper::Numeric)
         .unwrap_or_else(|_| CsvWrapper::String(String::from(s)))
+}
+
+fn get_type_of_column(csv: &[StringRecord], index: usize) -> CsvType {
+    let t = parse(csv[0].get(index).unwrap()).get_type();
+    for record in csv.iter() {
+        let parsed_type = parse(record.get(index).unwrap()).get_type();
+        if parsed_type != t {
+            return CsvType::String;
+        }
+    }
+    t
 }
 #[cfg(test)]
 mod test {
@@ -58,7 +61,7 @@ mod test {
             StringRecord::from(vec!["entry1", "1"]),
             StringRecord::from(vec!["entry2", "2"]),
         ];
-        let inference = ColumnInference::from_csv(Csv { headers, records });
+        let inference = ColumnInference::from_csv(&CsvData { headers, records });
         assert_eq!(
             inference.get_type(String::from("foo")),
             Some(&CsvType::String)

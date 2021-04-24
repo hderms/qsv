@@ -1,2 +1,2 @@
-mod csv;
-mod inference;
+pub mod csv_data;
+pub mod inference;
