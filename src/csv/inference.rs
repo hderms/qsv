@@ -2,6 +2,7 @@ use crate::csv::csv_data::{CsvData, CsvType, CsvWrapper};
 use csv::StringRecord;
 use std::collections::HashMap;
 use std::num::ParseIntError;
+use log::{info, debug, trace};
 
 /// a record of the inferred types for columns in a CSV
 pub struct ColumnInference {
@@ -16,6 +17,7 @@ impl ColumnInference {
             let t = get_type_of_column(&csv.records, i);
             columns_to_types.insert(String::from(header), t);
         }
+        debug!("Inferred columns for file {}: {:?} ", csv.filename, columns_to_types);
         ColumnInference { columns_to_types }
     }
 
@@ -61,7 +63,8 @@ mod test {
             StringRecord::from(vec!["entry1", "1"]),
             StringRecord::from(vec!["entry2", "2"]),
         ];
-        let inference = ColumnInference::from_csv(&CsvData { headers, records });
+        let filename = String::from("foo.csv");
+        let inference = ColumnInference::from_csv(&CsvData { headers, records, filename });
         assert_eq!(
             inference.get_type(String::from("foo")),
             Some(&CsvType::String)
