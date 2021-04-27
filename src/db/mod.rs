@@ -6,6 +6,7 @@ use rusqlite::{CachedStatement, Connection, Result};
 
 use crate::db::utils::repeat_vars;
 use std::error::Error;
+use log::{info, debug};
 
 pub mod utils;
 
@@ -50,12 +51,12 @@ impl Db {
             stmt.execute(params_from_iter).unwrap();
         }
         let elapsed = now.elapsed().as_millis();
-        println!("wrote {} records in {} ms", values.len(), elapsed);
+        debug!("wrote {} records in {} ms", values.len(), elapsed);
         self.connection.execute_batch("END TRANSACTION").unwrap();
     }
 
     pub fn select_statement(&self, query: &str) -> Result<Vec<Vec<String>>, Box<dyn Error>> {
-        println!("statement is {:?}", query);
+        debug!("Running select statement: {:?}", query);
         let mut statement: CachedStatement = self.connection.prepare_cached(query).unwrap();
         let results = statement
             .query_map([], move |row| {

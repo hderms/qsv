@@ -11,6 +11,7 @@ use std::ffi::OsStr;
 use std::io::Write;
 use std::path::Path;
 use uuid::Uuid;
+use log::{info, debug, trace};
 
 type Rows = Vec<Vec<String>>;
 
@@ -26,14 +27,15 @@ pub fn execute_query(query: &str) -> Result<Rows, Box<dyn Error>> {
     let mut files_to_tables = HashMap::new();
     for filename in collector.table_identifiers.iter() {
         if let Ok(()) = maybe_load_file(&mut files_to_tables, filename, &mut db) {
-            println!("we loaded file");
+            debug!("Potential filename from SQL was able to be loaded: {}", filename);
+        } else {
+            debug!("Identifier in SQL could not be loaded as file: {}", filename);
         }
     }
-    println!("{:?}", files_to_tables);
     let rewritten = Rewriter::new(files_to_tables);
     let mut to_rewrite = statement.clone();
     rewritten.rewrite(&mut to_rewrite);
-    println!("{}", to_rewrite.to_string());
+    debug!("Rewritten query: {}", to_rewrite.to_string());
     db.select_statement(to_rewrite.to_string().as_str())
 }
 fn maybe_load_file(
@@ -43,23 +45,20 @@ fn maybe_load_file(
 ) -> Result<(), Box<dyn Error>> {
     let csv = CsvData::from_filename(filename)?;
     let path = Path::new(filename);
-    println!("filename: {:?}", filename);
+    debug!("Attempting to load identifier from SQL as file: {}", filename);
     let table_name = path.file_stem(); //TODO: should we canonicalize path?
     let table_name = sanitize(table_name).unwrap_or_else(|| Uuid::new_v4().to_string());
-    println!("tablename: {:?}", table_name);
     let inference = ColumnInference::from_csv(&csv);
     let table_parameters = to_table_parameters(&csv, &inference);
     let table_parameters: Vec<&str> = table_parameters.iter().map(|s| s.as_str()).collect();
     let table_name = table_name.as_str();
-    println!("about to create: {:?}", filename);
+    debug!("Attempting to create table {} for filename {}", table_name, filename);
     db.create_table(table_name, &table_parameters)?;
     let headers: Vec<&str> = csv.headers.iter().collect();
     let records: Vec<Vec<&str>> = csv.records.iter().map(|r| r.iter().collect()).collect();
-    println!("about toinsert: {:?}", filename);
+    debug!("Inserting {} rows into {}", records.len(), table_name);
     db.insert(table_name, &headers, records);
-    println!("about_to_insert: {:?}", files_to_tables);
     files_to_tables.insert(filename.to_string(), String::from(table_name));
-    println!("map: {:?}", files_to_tables);
     Ok(())
 }
 ///Writes a set of rows to STDOUT

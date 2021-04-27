@@ -1,5 +1,6 @@
 use csv::StringRecord;
 use std::error::Error;
+use log::{info, debug};
 #[derive(Eq, PartialEq, Debug)]
 pub enum CsvWrapper {
     Numeric(i64),
@@ -23,10 +24,12 @@ pub enum CsvType {
 pub struct CsvData {
     pub records: Vec<StringRecord>,
     pub headers: StringRecord,
+    pub filename: String
 }
 impl CsvData {
     ///Load CSVData from a filename
     pub fn from_filename(filename: &str) -> Result<CsvData, Box<dyn Error>> {
+        debug!("Trying to load CSV from filename {}", filename);
         let mut records = Vec::with_capacity(10000);
         let mut rdr = csv::ReaderBuilder::new()
             .buffer_capacity(16 * (1 << 10))
@@ -37,9 +40,11 @@ impl CsvData {
             records.push(record);
         }
         let headers = rdr.headers()?;
+        debug!("Filename has headers: {:?}", headers);
         Ok(CsvData {
             records,
             headers: headers.to_owned(),
+            filename: String::from(filename)
         })
     }
 }
