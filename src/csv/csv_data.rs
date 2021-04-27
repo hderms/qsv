@@ -1,6 +1,6 @@
 use csv::StringRecord;
 use std::error::Error;
-use log::{info, debug};
+use log::debug;
 #[derive(Eq, PartialEq, Debug)]
 pub enum CsvWrapper {
     Numeric(i64),

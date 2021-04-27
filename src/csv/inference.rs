@@ -2,7 +2,7 @@ use crate::csv::csv_data::{CsvData, CsvType, CsvWrapper};
 use csv::StringRecord;
 use std::collections::HashMap;
 use std::num::ParseIntError;
-use log::{info, debug, trace};
+use log::debug;
 
 /// a record of the inferred types for columns in a CSV
 pub struct ColumnInference {

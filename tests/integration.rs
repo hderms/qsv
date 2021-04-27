@@ -16,7 +16,8 @@ fn it_errors_if_no_query_is_passed() -> Result<(), Box<dyn std::error::Error>> {
     let mut cmd = Command::cargo_bin("qsv")?;
     cmd.assert()
         .failure()
-        .stderr(predicates::str::contains("the len is 1"));
+        .stderr(predicates::str::contains("The following required arguments were not provided"))
+        .stderr(predicates::str::contains("<query>"));
     Ok(())
 }
 
