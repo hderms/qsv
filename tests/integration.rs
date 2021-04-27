@@ -52,3 +52,35 @@ fn it_will_run_a_simple_query_with_unions() -> Result<(), Box<dyn std::error::Er
     cmd.assert().success();
     Ok(())
 }
+
+#[test]
+fn it_will_run_a_simple_query_with_sqrt_on_float() -> Result<(), Box<dyn std::error::Error>> {
+    let mut cmd = Command::cargo_bin("qsv")?;
+    cmd.arg("select sqrt(12374)");
+    cmd.assert().success().stdout(predicates::str::contains("111.23848254988019"));
+    Ok(())
+}
+
+#[test]
+fn it_will_run_a_simple_query_with_sqrt_on_integer() -> Result<(), Box<dyn std::error::Error>> {
+    let mut cmd = Command::cargo_bin("qsv")?;
+    cmd.arg("select sqrt(4)");
+    cmd.assert().success().stdout(predicates::str::contains("2"));
+    Ok(())
+}
+
+#[test]
+fn it_will_run_a_simple_query_with_md5() -> Result<(), Box<dyn std::error::Error>> {
+    let mut cmd = Command::cargo_bin("qsv")?;
+    cmd.arg("select md5('foobar')");
+    cmd.assert().success().stdout(predicates::str::contains("3858f62230ac3c915f300c664312c63f"));
+    Ok(())
+}
+
+#[test]
+fn it_will_run_a_simple_query_with_stddev() -> Result<(), Box<dyn std::error::Error>> {
+    let mut cmd = Command::cargo_bin("qsv")?;
+    cmd.arg("select stddev(number) from testdata/statistical.csv");
+    cmd.assert().success().stdout(predicates::str::contains("1.7078251276599"));
+    Ok(())
+}
