@@ -6,7 +6,7 @@ use rusqlite::{CachedStatement, Connection, Result};
 
 use crate::db::utils::repeat_vars;
 use std::error::Error;
-use log::{info, debug};
+use log::debug;
 
 pub mod utils;
 

@@ -11,7 +11,7 @@ use std::ffi::OsStr;
 use std::io::Write;
 use std::path::Path;
 use uuid::Uuid;
-use log::{info, debug, trace};
+use log::debug;
 
 type Rows = Vec<Vec<String>>;
 
