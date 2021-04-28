@@ -3,12 +3,16 @@ use std::time::Instant;
 
 use rusqlite::types::ValueRef;
 use rusqlite::{CachedStatement, Connection, Result};
+use rusqlite::functions::FunctionFlags;
+
 
 use crate::db::utils::repeat_vars;
 use std::error::Error;
 use log::debug;
+use crate::db::functions::{calculate_md5, calculate_sqrt, Stddev};
 
 pub mod utils;
+mod functions;
 
 pub struct Db {
     pub connection: Connection,
@@ -25,6 +29,16 @@ impl Db {
         connection.pragma_update(None, "read_uncommitted", &"true")?;
         connection.pragma_update(None, "wal_autocheckpoint", &0u32)?;
         connection.pragma_update(None, "threads", &8u32)?;
+        connection.create_scalar_function("md5", 1, FunctionFlags::SQLITE_UTF8 | FunctionFlags::SQLITE_DETERMINISTIC,
+        move |ctx| {
+            calculate_md5(ctx).map_err(|e| rusqlite::Error::UserFunctionError(e.into()))
+        })?;
+        connection.create_scalar_function("sqrt", 1,  FunctionFlags::SQLITE_DETERMINISTIC,
+                                          move |ctx| {
+                                              calculate_sqrt(ctx).map_err(|e| rusqlite::Error::UserFunctionError(e.into()))
+                                          })?;
+        connection.create_aggregate_function("stddev", 1,  FunctionFlags::SQLITE_DETERMINISTIC,
+                                          Stddev)?;
         Ok(Db { connection })
     }
 
@@ -67,8 +81,8 @@ impl Db {
                         ValueRef::Null => String::from("null"),
                         ValueRef::Integer(i) => i.to_string(),
                         ValueRef::Text(buf) => String::from(str::from_utf8(buf).unwrap()),
-
-                        _ => String::from("foo"),
+                        ValueRef::Real(f) => f.to_string(),
+                        ValueRef::Blob(b) => String::from_utf8_lossy(b).to_string()
                     };
                     vec.push(v);
                 }
