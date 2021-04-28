@@ -15,7 +15,8 @@ use log::debug;
 
 type Rows = Vec<Vec<String>>;
 pub struct Options {
-    pub delimiter: char
+    pub delimiter: char,
+    pub trim: bool
 }
 
 ///Executes a query, possibly returning Rows
@@ -47,7 +48,7 @@ fn maybe_load_file(
     db: &mut Db,
     options: &Options
 ) -> Result<(), Box<dyn Error>> {
-    let csv = CsvData::from_filename(filename, options.delimiter)?;
+    let csv = CsvData::from_filename(filename, options.delimiter, options.trim)?;
     let path = Path::new(filename);
     debug!("Attempting to load identifier from SQL as file: {}", filename);
     let table_name = path.file_stem(); //TODO: should we canonicalize path?

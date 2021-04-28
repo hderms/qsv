@@ -15,7 +15,9 @@ use crate::qsv::Options;
 struct Opts {
     query: String,
     #[clap(short, long, default_value=",")]
-    delimiter: char
+    delimiter: char,
+    #[clap(long)]
+    trim: bool,
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
@@ -23,7 +25,8 @@ fn main() -> Result<(), Box<dyn Error>> {
     let opts: Opts = Opts::parse();
     let query = opts.query;
     let delimiter = opts.delimiter;
-    let options = Options{delimiter};
+    let trim = opts.trim;
+    let options = Options{delimiter, trim};
     let results = execute_query(query.as_str(), &options)?;
     write_to_stdout(results)?;
     Ok(())

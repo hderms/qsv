@@ -1,4 +1,4 @@
-use csv::StringRecord;
+use csv::{StringRecord, Trim};
 use std::error::Error;
 use log::debug;
 #[derive(Eq, PartialEq, Debug)]
@@ -28,12 +28,18 @@ pub struct CsvData {
 }
 impl CsvData {
     ///Load CSVData from a filename
-    pub fn from_filename(filename: &str, delimiter: char) -> Result<CsvData, Box<dyn Error>> {
+    pub fn from_filename(filename: &str, delimiter: char, trim: bool) -> Result<CsvData, Box<dyn Error>> {
         debug!("Trying to load CSV from filename {}", filename);
         let mut records = Vec::with_capacity(10000);
+        let trim = if trim {
+            Trim::All
+        } else {
+            Trim::None
+        };
         let mut rdr = csv::ReaderBuilder::new()
             .buffer_capacity(16 * (1 << 10))
             .delimiter(delimiter as u8)
+            .trim(trim)
             .from_path(filename)?;
 
         for result in rdr.records() {
@@ -53,10 +59,28 @@ impl CsvData {
 #[cfg(test)]
 mod tests {
     use super::*;
-    const delimiter: char = ',';
+    const DELIMITER: char = ',';
     #[test]
     fn it_can_load_file() {
-        let csv = CsvData::from_filename("testdata/test.csv", delimiter).unwrap();
+        let csv = CsvData::from_filename("testdata/test.csv", DELIMITER, false).unwrap();
         assert_eq!(csv.records, vec!(StringRecord::from(vec!("bar", "13"))))
+    }
+
+    #[test]
+    fn it_can_load_file_with_alternate_delimiter() {
+        let csv = CsvData::from_filename("testdata/slash_as_separator.csv", '/', true).unwrap();
+        assert_eq!(csv.records, vec!(
+            StringRecord::from(vec!("Bartender", "32")),
+            StringRecord::from(vec!("Construction Worker", "25")),
+        ))
+    }
+
+    #[test]
+    fn it_can_load_file_with_trim() {
+        let csv = CsvData::from_filename("testdata/occupations_with_extraneous_spaces.csv", DELIMITER, true).unwrap();
+        assert_eq!(csv.records, vec!(
+            StringRecord::from(vec!("Bartender", "18")),
+            StringRecord::from(vec!("Construction Worker", "18")),
+        ))
     }
 }

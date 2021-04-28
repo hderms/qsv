@@ -33,9 +33,7 @@ impl Aggregate<Vec<f64>, Option<f64>> for Stddev {
     }
 
     fn finalize(&self, _: &mut Context<'_>, numbers: Option<Vec<f64>>) -> Result<Option<f64>> {
-        println!("{:?}", &numbers);
         let stddev = numbers.map(|n| population_standard_deviation(&n, None));
-        println!("{:?}", stddev);
         Ok(stddev)
     }
 }

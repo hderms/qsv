@@ -93,3 +93,12 @@ fn it_will_run_with_an_alternate_delimiter() -> Result<(), Box<dyn std::error::E
     cmd.assert().success().stdout(predicates::str::contains("25"));
     Ok(())
 }
+
+#[test]
+fn it_will_run_with_trim() -> Result<(), Box<dyn std::error::Error>> {
+    let mut cmd = Command::cargo_bin("qsv")?;
+    cmd.arg("select min(minimum_age) from testdata/occupations_with_extraneous_spaces.csv");
+    cmd.arg("--trim");
+    cmd.assert().success();
+    Ok(())
+}
