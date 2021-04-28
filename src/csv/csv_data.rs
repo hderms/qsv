@@ -28,11 +28,12 @@ pub struct CsvData {
 }
 impl CsvData {
     ///Load CSVData from a filename
-    pub fn from_filename(filename: &str) -> Result<CsvData, Box<dyn Error>> {
+    pub fn from_filename(filename: &str, delimiter: char) -> Result<CsvData, Box<dyn Error>> {
         debug!("Trying to load CSV from filename {}", filename);
         let mut records = Vec::with_capacity(10000);
         let mut rdr = csv::ReaderBuilder::new()
             .buffer_capacity(16 * (1 << 10))
+            .delimiter(delimiter as u8)
             .from_path(filename)?;
 
         for result in rdr.records() {
@@ -52,9 +53,10 @@ impl CsvData {
 #[cfg(test)]
 mod tests {
     use super::*;
+    const delimiter: char = ',';
     #[test]
     fn it_can_load_file() {
-        let csv = CsvData::from_filename("testdata/test.csv").unwrap();
+        let csv = CsvData::from_filename("testdata/test.csv", delimiter).unwrap();
         assert_eq!(csv.records, vec!(StringRecord::from(vec!("bar", "13"))))
     }
 }
