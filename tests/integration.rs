@@ -84,3 +84,12 @@ fn it_will_run_a_simple_query_with_stddev() -> Result<(), Box<dyn std::error::Er
     cmd.assert().success().stdout(predicates::str::contains("1.7078251276599"));
     Ok(())
 }
+
+#[test]
+fn it_will_run_with_an_alternate_delimiter() -> Result<(), Box<dyn std::error::Error>> {
+    let mut cmd = Command::cargo_bin("qsv")?;
+    cmd.arg("select min(minimum_age) from testdata/slash_as_separator.csv");
+    cmd.arg("--delimiter=/");
+    cmd.assert().success().stdout(predicates::str::contains("25"));
+    Ok(())
+}

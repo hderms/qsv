@@ -14,9 +14,12 @@ use uuid::Uuid;
 use log::debug;
 
 type Rows = Vec<Vec<String>>;
+pub struct Options {
+    pub delimiter: char
+}
 
 ///Executes a query, possibly returning Rows
-pub fn execute_query(query: &str) -> Result<Rows, Box<dyn Error>> {
+pub fn execute_query(query: &str, options: &Options) -> Result<Rows, Box<dyn Error>> {
     let mut collector = Collector::new();
 
     let ast = Parser::parse_sql(query)?;
@@ -26,7 +29,7 @@ pub fn execute_query(query: &str) -> Result<Rows, Box<dyn Error>> {
     collector.collect(statement); //TODO: should we handle multiple SQL statements later?
     let mut files_to_tables = HashMap::new();
     for filename in collector.table_identifiers.iter() {
-        if let Ok(()) = maybe_load_file(&mut files_to_tables, filename, &mut db) {
+        if let Ok(()) = maybe_load_file(&mut files_to_tables, filename, &mut db, options) {
             debug!("Potential filename from SQL was able to be loaded: {}", filename);
         } else {
             debug!("Identifier in SQL could not be loaded as file: {}", filename);
@@ -42,8 +45,9 @@ fn maybe_load_file(
     files_to_tables: &mut HashMap<String, String>,
     filename: &str,
     db: &mut Db,
+    options: &Options
 ) -> Result<(), Box<dyn Error>> {
-    let csv = CsvData::from_filename(filename)?;
+    let csv = CsvData::from_filename(filename, options.delimiter)?;
     let path = Path::new(filename);
     debug!("Attempting to load identifier from SQL as file: {}", filename);
     let table_name = path.file_stem(); //TODO: should we canonicalize path?
