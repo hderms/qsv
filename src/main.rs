@@ -24,7 +24,7 @@ struct Opts {
 enum SubCommand {
     Query(Query),
     Analyze(Analyze),
-    FileType(FileType)
+    FileType(FileType),
 }
 
 #[derive(Clap)]
@@ -47,8 +47,8 @@ struct Analyze {
     trim: bool,
 }
 #[derive(Clap)]
-struct FileType{
-    filename: String
+struct FileType {
+    filename: String,
 }
 fn main() -> Result<(), Box<dyn Error>> {
     SimpleLogger::from_env().init()?;
@@ -82,7 +82,6 @@ fn main() -> Result<(), Box<dyn Error>> {
             let path = Path::new(ft.filename.as_str());
             let t = tree_magic::from_filepath(path);
             println!("{}", t);
-
         }
     }
     Ok(())

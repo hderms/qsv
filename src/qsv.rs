@@ -5,14 +5,14 @@ use crate::db::Db;
 use crate::parser::collector::Collector;
 use crate::parser::rewriter::Rewriter;
 use crate::parser::Parser;
+use flate2::read::GzDecoder;
 use log::{debug, error};
 use std::collections::HashMap;
 use std::error::Error;
+use std::fs::File;
 use std::io::Write;
 use std::path::Path;
 use uuid::Uuid;
-use flate2::read::GzDecoder;
-use std::fs::File;
 
 type Rows = Vec<Vec<String>>;
 pub struct Options {
@@ -46,9 +46,7 @@ pub fn execute_query(query: &str, options: &Options) -> Result<Rows, Box<dyn Err
                     filename
                 );
             }
-            Err(e) => {
-                return Err(e)
-            }
+            Err(e) => return Err(e),
         }
     }
     let rewritten = Rewriter::new(files_to_tables);
@@ -110,10 +108,14 @@ fn maybe_load_file(
 ) -> Result<Option<()>, Box<dyn Error>> {
     let path = Path::new(filename);
     if !path.exists() {
-        return Ok(None)
+        return Ok(None);
     }
     let mime_type = tree_magic::from_filepath(path);
-    debug!("File '{}' has MIME type: '{}'", filename.clone(), mime_type.clone());
+    debug!(
+        "File '{}' has MIME type: '{}'",
+        filename.clone(),
+        mime_type.clone()
+    );
     let csv = if mime_type == "application/gzip" {
         let reader = File::open(path)?;
         let d = GzDecoder::new(reader);
@@ -121,9 +123,13 @@ fn maybe_load_file(
     } else if mime_type == "text/plain" {
         CsvData::from_filename(filename, options.delimiter, options.trim)?
     } else {
-        let error_format = format!("Unsupported MIME type {} for file {}", mime_type.clone(), filename.clone());
+        let error_format = format!(
+            "Unsupported MIME type {} for file {}",
+            mime_type.clone(),
+            filename.clone()
+        );
         error!("{}", error_format);
-        return Err(error_format.into())
+        return Err(error_format.into());
     };
     let path = Path::new(filename);
     debug!(
@@ -131,7 +137,8 @@ fn maybe_load_file(
         filename
     );
     let without_extension = remove_extension(path);
-    let table_name = sanitize(without_extension).unwrap_or_else(|| String::from("t") + &Uuid::new_v4().as_u128().to_string());
+    let table_name = sanitize(without_extension)
+        .unwrap_or_else(|| String::from("t") + &Uuid::new_v4().as_u128().to_string());
     let inference = if options.textonly {
         ColumnInference::default_inference(&csv)
     } else {
@@ -158,13 +165,11 @@ fn remove_extension(p0: &Path) -> Option<String> {
     let file_str = file_name.to_str()?;
     let mut split = file_str.split(".");
     if let Some(str) = split.next() {
-
         Some(String::from(str))
     } else {
         None
     }
 }
-
 
 ///Writes a set of rows to STDOUT
 pub fn write_to_stdout(results: Rows) -> Result<(), Box<dyn Error>> {

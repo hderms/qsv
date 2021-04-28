@@ -54,7 +54,7 @@ impl CsvData {
         filename: &str,
         delimiter: char,
         trim: bool,
-    )  -> Result<CsvData, Box<dyn Error>> {
+    ) -> Result<CsvData, Box<dyn Error>> {
         let mut records = Vec::with_capacity(10000);
         let trim = if trim { Trim::All } else { Trim::None };
         let mut rdr = csv::ReaderBuilder::new()
@@ -75,7 +75,6 @@ impl CsvData {
             filename: String::from(filename),
         })
     }
-
 }
 
 #[cfg(test)]
