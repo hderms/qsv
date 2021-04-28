@@ -33,16 +33,22 @@ pub fn execute_query(query: &str, options: &Options) -> Result<Rows, Box<dyn Err
     let mut files_to_tables = HashMap::new();
     for filename in collector.table_identifiers.iter() {
         let maybe_load = maybe_load_file(&mut files_to_tables, filename, &mut db, options);
-        if let Ok(()) = maybe_load {
-            debug!(
-                "Potential filename from SQL was able to be loaded: {}",
-                filename
-            );
-        } else {
-            debug!(
-                "Identifier in SQL could not be loaded as file: {}",
-                filename
-            );
+        match maybe_load {
+            Ok(Some(())) => {
+                debug!(
+                    "Potential filename from SQL was able to be loaded: {}",
+                    filename
+                );
+            }
+            Ok(None) => {
+                debug!(
+                    "Identifier in SQL could not be loaded as file, as it didn't exist: {}",
+                    filename
+                );
+            }
+            Err(e) => {
+                return Err(e)
+            }
         }
     }
     let rewritten = Rewriter::new(files_to_tables);
@@ -101,10 +107,10 @@ fn maybe_load_file(
     filename: &str,
     db: &mut Db,
     options: &Options,
-) -> Result<(), Box<dyn Error>> {
+) -> Result<Option<()>, Box<dyn Error>> {
     let path = Path::new(filename);
     if !path.exists() {
-        return Err(String::from("couldn't find file").into())
+        return Ok(None)
     }
     let mime_type = tree_magic::from_filepath(path);
     debug!("File '{}' has MIME type: '{}'", filename.clone(), mime_type.clone());
@@ -115,9 +121,9 @@ fn maybe_load_file(
     } else if mime_type == "text/plain" {
         CsvData::from_filename(filename, options.delimiter, options.trim)?
     } else {
-        error!("Unsupported MIME type '{}' for file '{}'", mime_type.clone(), filename.clone());
-        return Err(String::from("Unrecognized MIME type").into())
-
+        let error_format = format!("Unsupported MIME type {} for file {}", mime_type.clone(), filename.clone());
+        error!("{}", error_format);
+        return Err(error_format.into())
     };
     let path = Path::new(filename);
     debug!(
@@ -144,7 +150,7 @@ fn maybe_load_file(
     debug!("Inserting {} rows into {}", records.len(), table_name);
     db.insert(table_name, &headers, records);
     files_to_tables.insert(filename.to_string(), String::from(table_name));
-    Ok(())
+    Ok(Some(()))
 }
 
 fn remove_extension(p0: &Path) -> Option<String> {
