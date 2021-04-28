@@ -8,10 +8,11 @@ use crate::parser::Parser;
 use log::debug;
 use std::collections::HashMap;
 use std::error::Error;
-use std::ffi::OsStr;
 use std::io::Write;
 use std::path::Path;
 use uuid::Uuid;
+use flate2::read::GzDecoder;
+use std::fs::File;
 
 type Rows = Vec<Vec<String>>;
 pub struct Options {
@@ -31,7 +32,8 @@ pub fn execute_query(query: &str, options: &Options) -> Result<Rows, Box<dyn Err
     collector.collect(statement); //TODO: should we handle multiple SQL statements later?
     let mut files_to_tables = HashMap::new();
     for filename in collector.table_identifiers.iter() {
-        if let Ok(()) = maybe_load_file(&mut files_to_tables, filename, &mut db, options) {
+        let maybe_load = maybe_load_file(&mut files_to_tables, filename, &mut db, options);
+        if let Ok(()) = maybe_load {
             debug!(
                 "Potential filename from SQL was able to be loaded: {}",
                 filename
@@ -100,14 +102,22 @@ fn maybe_load_file(
     db: &mut Db,
     options: &Options,
 ) -> Result<(), Box<dyn Error>> {
-    let csv = CsvData::from_filename(filename, options.delimiter, options.trim)?;
+    let path = Path::new(filename);
+    let mime_type = tree_magic::from_filepath(path);
+    let csv = if mime_type == "application/gzip" {
+        let reader = File::open(path)?;
+        let d = GzDecoder::new(reader);
+        CsvData::from_reader(d, filename, options.delimiter, options.trim)?
+    } else {
+        CsvData::from_filename(filename, options.delimiter, options.trim)?
+    };
     let path = Path::new(filename);
     debug!(
         "Attempting to load identifier from SQL as file: {}",
         filename
     );
-    let table_name = path.file_stem(); //TODO: should we canonicalize path?
-    let table_name = sanitize(table_name).unwrap_or_else(|| Uuid::new_v4().to_string());
+    let without_extension = remove_extension(path);
+    let table_name = sanitize(without_extension).unwrap_or_else(|| String::from("t") + &Uuid::new_v4().as_u128().to_string());
     let inference = if options.textonly {
         ColumnInference::default_inference(&csv)
     } else {
@@ -128,6 +138,20 @@ fn maybe_load_file(
     files_to_tables.insert(filename.to_string(), String::from(table_name));
     Ok(())
 }
+
+fn remove_extension(p0: &Path) -> Option<String> {
+    let file_name = p0.file_name()?;
+    let file_str = file_name.to_str()?;
+    let mut split = file_str.split(".");
+    if let Some(str) = split.next() {
+
+        Some(String::from(str))
+    } else {
+        None
+    }
+}
+
+
 ///Writes a set of rows to STDOUT
 pub fn write_to_stdout(results: Rows) -> Result<(), Box<dyn Error>> {
     let stdout = std::io::stdout();
@@ -140,9 +164,9 @@ pub fn write_to_stdout(results: Rows) -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-fn sanitize(str: Option<&OsStr>) -> Option<String> {
+fn sanitize(str: Option<String>) -> Option<String> {
     match str {
-        Some(s) => s.to_str().map(|v| v.replace(" ", "_")),
+        Some(s) => Some(s.replace(" ", "_")),
         None => None,
     }
 }
