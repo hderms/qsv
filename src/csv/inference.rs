@@ -21,6 +21,16 @@ impl ColumnInference {
         ColumnInference { columns_to_types }
     }
 
+    /// build column 'inference' with every column artificially inferred as a String
+    pub fn default_inference(csv: &CsvData) -> ColumnInference {
+        let mut columns_to_types: HashMap<String, CsvType> = HashMap::new();
+        for  header in csv.headers.iter() {
+            columns_to_types.insert(String::from(header), CsvType::String);
+        }
+        debug!("Using default column type of string for all columns in file {}: {:?} ", csv.filename, columns_to_types);
+        ColumnInference { columns_to_types }
+    }
+
     /// get the type of a column, referenced by its string name
     pub fn get_type(&self, s: String) -> Option<&CsvType> {
         self.columns_to_types.get(s.as_str())
@@ -58,12 +68,12 @@ mod test {
     }
     #[test]
     fn it_should_recognize_integer_column() {
+        let filename: String = String::from("foo.csv");
         let headers = StringRecord::from(vec!["foo", "bar"]);
         let records = vec![
             StringRecord::from(vec!["entry1", "1"]),
             StringRecord::from(vec!["entry2", "2"]),
         ];
-        let filename = String::from("foo.csv");
         let inference = ColumnInference::from_csv(&CsvData { headers, records, filename });
         assert_eq!(
             inference.get_type(String::from("foo")),
@@ -72,6 +82,25 @@ mod test {
         assert_eq!(
             inference.get_type(String::from("bar")),
             Some(&CsvType::Numeric)
+        );
+    }
+
+    #[test]
+    fn it_should_use_default_column_type_if_inference_disabled() {
+        let headers = StringRecord::from(vec!["foo", "bar"]);
+        let filename: String = String::from("foo.csv");
+        let records = vec![
+            StringRecord::from(vec!["entry1", "1"]),
+            StringRecord::from(vec!["entry2", "2"]),
+        ];
+        let inference = ColumnInference::default_inference(&CsvData { headers, records, filename });
+        assert_eq!(
+            inference.get_type(String::from("foo")),
+            Some(&CsvType::String)
+        );
+        assert_eq!(
+            inference.get_type(String::from("bar")),
+            Some(&CsvType::String)
         );
     }
 }
