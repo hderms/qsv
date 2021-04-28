@@ -49,10 +49,7 @@ mod tests {
         let sql = "select * from ./foo.csv";
         let ast = Parser::parse_sql(sql).unwrap();
 
-        assert_eq!(
-            ast[0].to_string(),
-            "SELECT * FROM ./foo.csv"
-        );
+        assert_eq!(ast[0].to_string(), "SELECT * FROM ./foo.csv");
         println!("AST: {:?}", ast)
     }
 

@@ -21,7 +21,9 @@ mod query_subcommand {
         let mut cmd = build_cmd();
         cmd.assert()
             .failure()
-            .stderr(predicates::str::contains("The following required arguments were not provided"))
+            .stderr(predicates::str::contains(
+                "The following required arguments were not provided",
+            ))
             .stderr(predicates::str::contains("<query>"));
         Ok(())
     }
@@ -35,9 +37,12 @@ mod query_subcommand {
     }
 
     #[test]
-    fn it_will_run_a_simple_query_with_spaces_in_filename() -> Result<(), Box<dyn std::error::Error>> {
+    fn it_will_run_a_simple_query_with_spaces_in_filename() -> Result<(), Box<dyn std::error::Error>>
+    {
         let mut cmd = build_cmd();
-        cmd.arg("select * from (select * from (select*from `./testdata/occupations with spaces.csv`))");
+        cmd.arg(
+            "select * from (select * from (select*from `./testdata/occupations with spaces.csv`))",
+        );
         cmd.assert().success();
         Ok(())
     }
@@ -62,7 +67,9 @@ mod query_subcommand {
     fn it_will_run_a_simple_query_with_sqrt_on_float() -> Result<(), Box<dyn std::error::Error>> {
         let mut cmd = build_cmd();
         cmd.arg("select sqrt(12374)");
-        cmd.assert().success().stdout(predicates::str::contains("111.23848254988019"));
+        cmd.assert()
+            .success()
+            .stdout(predicates::str::contains("111.23848254988019"));
         Ok(())
     }
 
@@ -70,7 +77,9 @@ mod query_subcommand {
     fn it_will_run_a_simple_query_with_sqrt_on_integer() -> Result<(), Box<dyn std::error::Error>> {
         let mut cmd = build_cmd();
         cmd.arg("select sqrt(4)");
-        cmd.assert().success().stdout(predicates::str::contains("2"));
+        cmd.assert()
+            .success()
+            .stdout(predicates::str::contains("2"));
         Ok(())
     }
 
@@ -78,7 +87,9 @@ mod query_subcommand {
     fn it_will_run_a_simple_query_with_md5() -> Result<(), Box<dyn std::error::Error>> {
         let mut cmd = build_cmd();
         cmd.arg("select md5('foobar')");
-        cmd.assert().success().stdout(predicates::str::contains("3858f62230ac3c915f300c664312c63f"));
+        cmd.assert().success().stdout(predicates::str::contains(
+            "3858f62230ac3c915f300c664312c63f",
+        ));
         Ok(())
     }
 
@@ -86,7 +97,9 @@ mod query_subcommand {
     fn it_will_run_a_simple_query_with_stddev() -> Result<(), Box<dyn std::error::Error>> {
         let mut cmd = build_cmd();
         cmd.arg("select stddev(number) from testdata/statistical.csv");
-        cmd.assert().success().stdout(predicates::str::contains("1.7078251276599"));
+        cmd.assert()
+            .success()
+            .stdout(predicates::str::contains("1.7078251276599"));
         Ok(())
     }
 
@@ -95,7 +108,9 @@ mod query_subcommand {
         let mut cmd = build_cmd();
         cmd.arg("select min(minimum_age) from testdata/slash_as_separator.csv");
         cmd.arg("--delimiter=/");
-        cmd.assert().success().stdout(predicates::str::contains("25"));
+        cmd.assert()
+            .success()
+            .stdout(predicates::str::contains("25"));
         Ok(())
     }
 
@@ -140,7 +155,9 @@ mod analyze_subcommand {
         let mut cmd = build_cmd();
         cmd.assert()
             .failure()
-            .stderr(predicates::str::contains("The following required arguments were not provided"))
+            .stderr(predicates::str::contains(
+                "The following required arguments were not provided",
+            ))
             .stderr(predicates::str::contains("<query>"));
         Ok(())
     }
@@ -149,7 +166,8 @@ mod analyze_subcommand {
     fn it_will_run_a_simple_query_with_subqueries() -> Result<(), Box<dyn std::error::Error>> {
         let mut cmd = build_cmd();
         cmd.arg("select * from (select * from (select*from ./testdata/occupations.csv))");
-        cmd.assert().success()
+        cmd.assert()
+            .success()
             .stdout(predicates::str::contains("./testdata/occupations.csv:"))
             .stdout(predicates::str::contains("minimum_age -> numeric"))
             .stdout(predicates::str::contains("occupation -> text"));
@@ -157,9 +175,12 @@ mod analyze_subcommand {
     }
 
     #[test]
-    fn it_will_run_a_simple_query_with_spaces_in_filename() -> Result<(), Box<dyn std::error::Error>> {
+    fn it_will_run_a_simple_query_with_spaces_in_filename() -> Result<(), Box<dyn std::error::Error>>
+    {
         let mut cmd = build_cmd();
-        cmd.arg("select * from (select * from (select*from `./testdata/occupations with spaces.csv`))");
+        cmd.arg(
+            "select * from (select * from (select*from `./testdata/occupations with spaces.csv`))",
+        );
         cmd.assert().success();
         Ok(())
     }
@@ -168,15 +189,15 @@ mod analyze_subcommand {
     fn it_will_run_a_simple_query_with_unions() -> Result<(), Box<dyn std::error::Error>> {
         let mut cmd = build_cmd();
         cmd.arg("select age from ./testdata/people.csv union select minimum_age as age from ./testdata/occupations.csv");
-        cmd.assert().success()
+        cmd.assert()
+            .success()
             .stdout(predicates::str::contains("./testdata/occupations.csv:"))
             .stdout(predicates::str::contains("minimum_age -> numeric"))
             .stdout(predicates::str::contains("occupation -> text"))
-        .stdout(predicates::str::contains("./testdata/people.csv:"))
+            .stdout(predicates::str::contains("./testdata/people.csv:"))
             .stdout(predicates::str::contains("name -> text"))
             .stdout(predicates::str::contains("age -> numeric"));
 
         Ok(())
     }
-
 }

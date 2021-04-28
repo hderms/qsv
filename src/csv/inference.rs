@@ -1,9 +1,9 @@
 use crate::csv::csv_data::{CsvData, CsvType, CsvWrapper};
 use csv::StringRecord;
-use std::collections::HashMap;
-use std::num::ParseIntError;
 use log::debug;
+use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
+use std::num::ParseIntError;
 
 /// a record of the inferred types for columns in a CSV
 #[derive(Debug)]
@@ -21,17 +21,15 @@ impl Display for ColumnInference {
 
 #[derive(Debug)]
 pub struct ColumnInferences {
-    hashmap: HashMap<String, ColumnInference>
+    hashmap: HashMap<String, ColumnInference>,
 }
-impl ColumnInferences{
+impl ColumnInferences {
     pub fn new(hashmap: HashMap<String, ColumnInference>) -> ColumnInferences {
-        ColumnInferences{
-            hashmap
-        }
+        ColumnInferences { hashmap }
     }
 }
 
-impl Display for ColumnInferences{
+impl Display for ColumnInferences {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         for (table_name, inference) in self.hashmap.iter() {
             writeln!(f, "{}:", table_name)?;
@@ -51,17 +49,23 @@ impl ColumnInference {
             let t = get_type_of_column(&csv.records, i);
             columns_to_types.insert(String::from(header), t);
         }
-        debug!("Inferred columns for file {}: {:?} ", csv.filename, columns_to_types);
+        debug!(
+            "Inferred columns for file {}: {:?} ",
+            csv.filename, columns_to_types
+        );
         ColumnInference { columns_to_types }
     }
 
     /// build column 'inference' with every column artificially inferred as a String
     pub fn default_inference(csv: &CsvData) -> ColumnInference {
         let mut columns_to_types: HashMap<String, CsvType> = HashMap::new();
-        for  header in csv.headers.iter() {
+        for header in csv.headers.iter() {
             columns_to_types.insert(String::from(header), CsvType::String);
         }
-        debug!("Using default column type of string for all columns in file {}: {:?} ", csv.filename, columns_to_types);
+        debug!(
+            "Using default column type of string for all columns in file {}: {:?} ",
+            csv.filename, columns_to_types
+        );
         ColumnInference { columns_to_types }
     }
 
@@ -108,7 +112,11 @@ mod test {
             StringRecord::from(vec!["entry1", "1"]),
             StringRecord::from(vec!["entry2", "2"]),
         ];
-        let inference = ColumnInference::from_csv(&CsvData { headers, records, filename });
+        let inference = ColumnInference::from_csv(&CsvData {
+            headers,
+            records,
+            filename,
+        });
         assert_eq!(
             inference.get_type(String::from("foo")),
             Some(&CsvType::String)
@@ -127,7 +135,11 @@ mod test {
             StringRecord::from(vec!["entry1", "1"]),
             StringRecord::from(vec!["entry2", "2"]),
         ];
-        let inference = ColumnInference::default_inference(&CsvData { headers, records, filename });
+        let inference = ColumnInference::default_inference(&CsvData {
+            headers,
+            records,
+            filename,
+        });
         assert_eq!(
             inference.get_type(String::from("foo")),
             Some(&CsvType::String)
