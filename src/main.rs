@@ -58,7 +58,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             let trim = subcmd.trim;
             let options = Options{delimiter, trim, textonly: false};
             let results = execute_analysis(subcmd.query.as_str(), &options)?;
-            println!("{:?}", results);
+            println!("{}", results);
         }
     }
     Ok(())

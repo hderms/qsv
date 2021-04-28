@@ -117,3 +117,66 @@ mod query_subcommand {
         Ok(())
     }
 }
+#[cfg(test)]
+mod analyze_subcommand {
+    use std::process::Command;
+
+    use assert_cmd::prelude::*;
+    fn build_cmd() -> Command {
+        let mut cmd = Command::cargo_bin("qsv").unwrap();
+        cmd.arg("analyze");
+        cmd
+    }
+    #[test]
+    fn it_can_run_the_commandline_for_a_simple_query() -> Result<(), Box<dyn std::error::Error>> {
+        let mut cmd = build_cmd();
+        cmd.arg("SELECT 1 = 1");
+        cmd.assert().success();
+        Ok(())
+    }
+
+    #[test]
+    fn it_errors_if_no_query_is_passed() -> Result<(), Box<dyn std::error::Error>> {
+        let mut cmd = build_cmd();
+        cmd.assert()
+            .failure()
+            .stderr(predicates::str::contains("The following required arguments were not provided"))
+            .stderr(predicates::str::contains("<query>"));
+        Ok(())
+    }
+
+    #[test]
+    fn it_will_run_a_simple_query_with_subqueries() -> Result<(), Box<dyn std::error::Error>> {
+        let mut cmd = build_cmd();
+        cmd.arg("select * from (select * from (select*from ./testdata/occupations.csv))");
+        cmd.assert().success()
+            .stdout(predicates::str::contains("./testdata/occupations.csv:"))
+            .stdout(predicates::str::contains("minimum_age -> numeric"))
+            .stdout(predicates::str::contains("occupation -> text"));
+        Ok(())
+    }
+
+    #[test]
+    fn it_will_run_a_simple_query_with_spaces_in_filename() -> Result<(), Box<dyn std::error::Error>> {
+        let mut cmd = build_cmd();
+        cmd.arg("select * from (select * from (select*from `./testdata/occupations with spaces.csv`))");
+        cmd.assert().success();
+        Ok(())
+    }
+
+    #[test]
+    fn it_will_run_a_simple_query_with_unions() -> Result<(), Box<dyn std::error::Error>> {
+        let mut cmd = build_cmd();
+        cmd.arg("select age from ./testdata/people.csv union select minimum_age as age from ./testdata/occupations.csv");
+        cmd.assert().success()
+            .stdout(predicates::str::contains("./testdata/occupations.csv:"))
+            .stdout(predicates::str::contains("minimum_age -> numeric"))
+            .stdout(predicates::str::contains("occupation -> text"))
+        .stdout(predicates::str::contains("./testdata/people.csv:"))
+            .stdout(predicates::str::contains("name -> text"))
+            .stdout(predicates::str::contains("age -> numeric"));
+
+        Ok(())
+    }
+
+}
