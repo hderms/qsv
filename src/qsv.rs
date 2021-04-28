@@ -16,7 +16,8 @@ use log::debug;
 type Rows = Vec<Vec<String>>;
 pub struct Options {
     pub delimiter: char,
-    pub trim: bool
+    pub trim: bool,
+    pub textonly: bool,
 }
 
 ///Executes a query, possibly returning Rows
@@ -53,7 +54,11 @@ fn maybe_load_file(
     debug!("Attempting to load identifier from SQL as file: {}", filename);
     let table_name = path.file_stem(); //TODO: should we canonicalize path?
     let table_name = sanitize(table_name).unwrap_or_else(|| Uuid::new_v4().to_string());
-    let inference = ColumnInference::from_csv(&csv);
+    let inference = if options.textonly {
+        ColumnInference::default_inference(&csv)
+    } else {
+        ColumnInference::from_csv(&csv)
+    };
     let table_parameters = to_table_parameters(&csv, &inference);
     let table_parameters: Vec<&str> = table_parameters.iter().map(|s| s.as_str()).collect();
     let table_name = table_name.as_str();

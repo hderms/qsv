@@ -18,6 +18,8 @@ struct Opts {
     delimiter: char,
     #[clap(long)]
     trim: bool,
+    #[clap(long)]
+    textonly: bool,
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
@@ -26,7 +28,8 @@ fn main() -> Result<(), Box<dyn Error>> {
     let query = opts.query;
     let delimiter = opts.delimiter;
     let trim = opts.trim;
-    let options = Options{delimiter, trim};
+    let textonly = opts.textonly;
+    let options = Options{delimiter, trim, textonly};
     let results = execute_query(query.as_str(), &options)?;
     write_to_stdout(results)?;
     Ok(())

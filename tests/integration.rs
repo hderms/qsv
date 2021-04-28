@@ -102,3 +102,12 @@ fn it_will_run_with_trim() -> Result<(), Box<dyn std::error::Error>> {
     cmd.assert().success();
     Ok(())
 }
+
+#[test]
+fn it_will_run_with_textonly() -> Result<(), Box<dyn std::error::Error>> {
+    let mut cmd = Command::cargo_bin("qsv")?;
+    cmd.arg("select md5(column) from testdata/sortable_columns.csv");
+    cmd.arg("--textonly");
+    cmd.assert().success();
+    Ok(())
+}
