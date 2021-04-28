@@ -5,8 +5,21 @@ use std::num::ParseIntError;
 use log::debug;
 
 /// a record of the inferred types for columns in a CSV
+#[derive(Debug)]
 pub struct ColumnInference {
     columns_to_types: HashMap<String, CsvType>,
+}
+
+#[derive(Debug)]
+pub struct ColumnInferences {
+    hashmap: HashMap<String, ColumnInference>
+}
+impl ColumnInferences{
+    pub fn new(hashmap: HashMap<String, ColumnInference>) -> ColumnInferences {
+        ColumnInferences{
+            hashmap
+        }
+    }
 }
 
 impl ColumnInference {

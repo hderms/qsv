@@ -1,5 +1,5 @@
 use crate::csv::csv_data::CsvData;
-use crate::csv::inference::ColumnInference;
+use crate::csv::inference::{ColumnInference, ColumnInferences};
 use crate::db::utils::to_table_parameters;
 use crate::db::Db;
 use crate::parser::collector::Collector;
@@ -42,6 +42,40 @@ pub fn execute_query(query: &str, options: &Options) -> Result<Rows, Box<dyn Err
     rewritten.rewrite(&mut to_rewrite);
     debug!("Rewritten query: {}", to_rewrite.to_string());
     db.select_statement(to_rewrite.to_string().as_str())
+}
+
+///Executes a query, possibly returning Rows
+pub fn execute_analysis(query: &str, options: &Options) -> Result<ColumnInferences, Box<dyn Error>> {
+    let mut collector = Collector::new();
+    let ast = Parser::parse_sql(query)?;
+    let statement = &ast[0];
+
+    collector.collect(statement); //TODO: should we handle multiple SQL statements later?
+    let mut hashmap: HashMap<String, ColumnInference> = HashMap::new();
+    for filename in collector.table_identifiers.iter() {
+        if let Ok(inference) = maybe_load_analysis( filename, options) {
+            hashmap.insert(filename.clone(), inference);
+            debug!("Potential filename from SQL was able to be loaded: {}", filename);
+        } else {
+            debug!("Identifier in SQL could not be loaded as file: {}", filename);
+        }
+    }
+    Ok(ColumnInferences::new(
+        hashmap))
+}
+
+fn maybe_load_analysis(
+    filename: &str,
+    options: &Options
+) -> Result<ColumnInference, Box<dyn Error>> {
+    let csv = CsvData::from_filename(filename, options.delimiter, options.trim)?;
+    debug!("Attempting to load identifier from SQL as file: {}", filename);
+    let inference = if options.textonly {
+        ColumnInference::default_inference(&csv)
+    } else {
+        ColumnInference::from_csv(&csv)
+    };
+    Ok(inference)
 }
 fn maybe_load_file(
     files_to_tables: &mut HashMap<String, String>,
