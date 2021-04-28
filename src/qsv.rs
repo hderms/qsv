@@ -113,8 +113,8 @@ fn maybe_load_file(
     let mime_type = tree_magic::from_filepath(path);
     debug!(
         "File '{}' has MIME type: '{}'",
-        filename.clone(),
-        mime_type.clone()
+        filename,
+        mime_type
     );
     let csv = if mime_type == "application/gzip" {
         let reader = File::open(path)?;
@@ -125,8 +125,8 @@ fn maybe_load_file(
     } else {
         let error_format = format!(
             "Unsupported MIME type {} for file {}",
-            mime_type.clone(),
-            filename.clone()
+            mime_type,
+            filename
         );
         error!("{}", error_format);
         return Err(error_format.into());
@@ -163,7 +163,7 @@ fn maybe_load_file(
 fn remove_extension(p0: &Path) -> Option<String> {
     let file_name = p0.file_name()?;
     let file_str = file_name.to_str()?;
-    let mut split = file_str.split(".");
+    let mut split = file_str.split('.');
     if let Some(str) = split.next() {
         Some(String::from(str))
     } else {
