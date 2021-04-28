@@ -1,4 +1,4 @@
-use rusqlite::functions::{Context, Aggregate};
+use rusqlite::functions::{Aggregate, Context};
 use rusqlite::Result;
 use statistical::population_standard_deviation;
 
@@ -23,7 +23,7 @@ pub struct Stddev;
 
 impl Aggregate<Vec<f64>, Option<f64>> for Stddev {
     fn init(&self, _: &mut Context<'_>) -> Result<Vec<f64>> {
-        Ok(vec!())
+        Ok(vec![])
     }
 
     fn step(&self, ctx: &mut Context<'_>, stdev: &mut Vec<f64>) -> Result<()> {
@@ -37,4 +37,3 @@ impl Aggregate<Vec<f64>, Option<f64>> for Stddev {
         Ok(stddev)
     }
 }
-

@@ -1,6 +1,6 @@
 use csv::{StringRecord, Trim};
-use std::error::Error;
 use log::debug;
+use std::error::Error;
 use std::fmt::{Display, Formatter};
 
 #[derive(Eq, PartialEq, Debug)]
@@ -26,7 +26,7 @@ impl Display for CsvType {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
             CsvType::Numeric => f.write_str("numeric"),
-            CsvType::String => f.write_str("text")
+            CsvType::String => f.write_str("text"),
         }
     }
 }
@@ -34,18 +34,18 @@ impl Display for CsvType {
 pub struct CsvData {
     pub records: Vec<StringRecord>,
     pub headers: StringRecord,
-    pub filename: String
+    pub filename: String,
 }
 impl CsvData {
     ///Load CSVData from a filename
-    pub fn from_filename(filename: &str, delimiter: char, trim: bool) -> Result<CsvData, Box<dyn Error>> {
+    pub fn from_filename(
+        filename: &str,
+        delimiter: char,
+        trim: bool,
+    ) -> Result<CsvData, Box<dyn Error>> {
         debug!("Trying to load CSV from filename {}", filename);
         let mut records = Vec::with_capacity(10000);
-        let trim = if trim {
-            Trim::All
-        } else {
-            Trim::None
-        };
+        let trim = if trim { Trim::All } else { Trim::None };
         let mut rdr = csv::ReaderBuilder::new()
             .buffer_capacity(16 * (1 << 10))
             .delimiter(delimiter as u8)
@@ -61,7 +61,7 @@ impl CsvData {
         Ok(CsvData {
             records,
             headers: headers.to_owned(),
-            filename: String::from(filename)
+            filename: String::from(filename),
         })
     }
 }
@@ -79,18 +79,29 @@ mod tests {
     #[test]
     fn it_can_load_file_with_alternate_delimiter() {
         let csv = CsvData::from_filename("testdata/slash_as_separator.csv", '/', true).unwrap();
-        assert_eq!(csv.records, vec!(
-            StringRecord::from(vec!("Bartender", "32")),
-            StringRecord::from(vec!("Construction Worker", "25")),
-        ))
+        assert_eq!(
+            csv.records,
+            vec!(
+                StringRecord::from(vec!("Bartender", "32")),
+                StringRecord::from(vec!("Construction Worker", "25")),
+            )
+        )
     }
 
     #[test]
     fn it_can_load_file_with_trim() {
-        let csv = CsvData::from_filename("testdata/occupations_with_extraneous_spaces.csv", DELIMITER, true).unwrap();
-        assert_eq!(csv.records, vec!(
-            StringRecord::from(vec!("Bartender", "18")),
-            StringRecord::from(vec!("Construction Worker", "18")),
-        ))
+        let csv = CsvData::from_filename(
+            "testdata/occupations_with_extraneous_spaces.csv",
+            DELIMITER,
+            true,
+        )
+        .unwrap();
+        assert_eq!(
+            csv.records,
+            vec!(
+                StringRecord::from(vec!("Bartender", "18")),
+                StringRecord::from(vec!("Construction Worker", "18")),
+            )
+        )
     }
 }
