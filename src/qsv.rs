@@ -5,7 +5,7 @@ use crate::db::Db;
 use crate::parser::collector::Collector;
 use crate::parser::rewriter::Rewriter;
 use crate::parser::Parser;
-use log::debug;
+use log::{debug, error};
 use std::collections::HashMap;
 use std::error::Error;
 use std::io::Write;
@@ -103,13 +103,21 @@ fn maybe_load_file(
     options: &Options,
 ) -> Result<(), Box<dyn Error>> {
     let path = Path::new(filename);
+    if !path.exists() {
+        return Err(String::from("couldn't find file").into())
+    }
     let mime_type = tree_magic::from_filepath(path);
+    debug!("File '{}' has MIME type: '{}'", filename.clone(), mime_type.clone());
     let csv = if mime_type == "application/gzip" {
         let reader = File::open(path)?;
         let d = GzDecoder::new(reader);
         CsvData::from_reader(d, filename, options.delimiter, options.trim)?
-    } else {
+    } else if mime_type == "text/plain" {
         CsvData::from_filename(filename, options.delimiter, options.trim)?
+    } else {
+        error!("Unsupported MIME type '{}' for file '{}'", mime_type.clone(), filename.clone());
+        return Err(String::from("Unrecognized MIME type").into())
+
     };
     let path = Path::new(filename);
     debug!(
