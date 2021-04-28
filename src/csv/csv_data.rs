@@ -53,9 +53,10 @@ impl CsvData {
 #[cfg(test)]
 mod tests {
     use super::*;
+    const delimiter: char = ',';
     #[test]
     fn it_can_load_file() {
-        let csv = CsvData::from_filename("testdata/test.csv").unwrap();
+        let csv = CsvData::from_filename("testdata/test.csv", delimiter).unwrap();
         assert_eq!(csv.records, vec!(StringRecord::from(vec!("bar", "13"))))
     }
 }
