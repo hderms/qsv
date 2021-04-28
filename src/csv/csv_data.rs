@@ -1,6 +1,8 @@
 use csv::{StringRecord, Trim};
 use std::error::Error;
 use log::debug;
+use std::fmt::{Display, Formatter};
+
 #[derive(Eq, PartialEq, Debug)]
 pub enum CsvWrapper {
     Numeric(i64),
@@ -19,6 +21,14 @@ impl CsvWrapper {
 pub enum CsvType {
     Numeric,
     String,
+}
+impl Display for CsvType {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            CsvType::Numeric => f.write_str("numeric"),
+            CsvType::String => f.write_str("text")
+        }
+    }
 }
 ///A representation of CSV data loaded into memory
 pub struct CsvData {

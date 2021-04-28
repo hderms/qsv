@@ -3,10 +3,44 @@ use csv::StringRecord;
 use std::collections::HashMap;
 use std::num::ParseIntError;
 use log::debug;
+use std::fmt::{Display, Formatter};
 
 /// a record of the inferred types for columns in a CSV
+#[derive(Debug)]
 pub struct ColumnInference {
     columns_to_types: HashMap<String, CsvType>,
+}
+impl Display for ColumnInference {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        for (column, inferred_type) in self.columns_to_types.iter() {
+            writeln!(f, "{} -> {}", column, inferred_type)?;
+        }
+        Ok(())
+    }
+}
+
+#[derive(Debug)]
+pub struct ColumnInferences {
+    hashmap: HashMap<String, ColumnInference>
+}
+impl ColumnInferences{
+    pub fn new(hashmap: HashMap<String, ColumnInference>) -> ColumnInferences {
+        ColumnInferences{
+            hashmap
+        }
+    }
+}
+
+impl Display for ColumnInferences{
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        for (table_name, inference) in self.hashmap.iter() {
+            writeln!(f, "{}:", table_name)?;
+            for (column, inferred_type) in inference.columns_to_types.iter() {
+                writeln!(f, "\t{} -> {}", column, inferred_type)?;
+            }
+        }
+        Ok(())
+    }
 }
 
 impl ColumnInference {
