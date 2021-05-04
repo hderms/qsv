@@ -187,11 +187,8 @@ pub fn write_to_stdout(results: Rows) -> Result<(), Box<dyn Error>> {
 
 ///Writes a set of rows to STDOUT, with the header included
 pub fn write_to_stdout_with_header(results: Rows, header: &[String]) -> Result<(), Box<dyn Error>> {
-    let stdout = std::io::stdout();
-    let mut lock = stdout.lock();
     let header = header.join(",");
-    lock.write_all(header.as_bytes())?;
-    lock.write_all(&[b'\n'])?;
+    println!("{}", header);
     write_to_stdout(results)
 }
 
