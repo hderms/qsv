@@ -1,4 +1,3 @@
-#[cfg(test)]
 mod query_subcommand {
     use std::process::Command;
 
@@ -140,7 +139,6 @@ mod query_subcommand {
         Ok(())
     }
 }
-#[cfg(test)]
 mod analyze_subcommand {
     use std::process::Command;
 
