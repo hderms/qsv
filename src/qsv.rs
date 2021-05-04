@@ -22,7 +22,10 @@ pub struct Options {
 }
 
 ///Executes a query, possibly returning Rows
-pub fn execute_query(query: &str, options: &Options) -> Result<(Vec<String>, Rows), Box<dyn Error>> {
+pub fn execute_query(
+    query: &str,
+    options: &Options,
+) -> Result<(Vec<String>, Rows), Box<dyn Error>> {
     let mut collector = Collector::new();
 
     let ast = Parser::parse_sql(query)?;
@@ -184,12 +187,12 @@ pub fn write_to_stdout(results: Rows) -> Result<(), Box<dyn Error>> {
 }
 
 ///Writes a set of rows to STDOUT, with the header included
-pub fn write_to_stdout_with_header(results: Rows, header: &Vec<String>) -> Result<(), Box<dyn Error>> {
+pub fn write_to_stdout_with_header(results: Rows, header: &[String]) -> Result<(), Box<dyn Error>> {
     let stdout = std::io::stdout();
     let mut lock = stdout.lock();
     let header = header.join(",");
-    lock.write(header.as_bytes())?;
-    lock.write(&['\n' as u8])?;
+    lock.write_all(header.as_bytes())?;
+    lock.write_all(&[b'\n'])?;
     write_to_stdout(results)
 }
 

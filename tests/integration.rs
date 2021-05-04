@@ -144,7 +144,8 @@ mod query_subcommand {
         let mut cmd = build_cmd();
         cmd.arg("select * from testdata/people.csv");
         cmd.arg("--output-header");
-        cmd.assert().success()
+        cmd.assert()
+            .success()
             .stdout(predicates::str::contains("name,age"));
         Ok(())
     }

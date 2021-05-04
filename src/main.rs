@@ -3,8 +3,8 @@ mod db;
 mod parser;
 mod qsv;
 
-use crate::qsv::{Options, write_to_stdout_with_header};
 use crate::qsv::{execute_analysis, execute_query, write_to_stdout};
+use crate::qsv::{write_to_stdout_with_header, Options};
 use clap::{AppSettings, Clap};
 use simple_logger::SimpleLogger;
 use std::error::Error;
@@ -37,7 +37,7 @@ struct Query {
     #[clap(long)]
     textonly: bool,
     #[clap(short, long("output-header"))]
-    outputheader: bool
+    outputheader: bool,
 }
 
 #[derive(Clap)]
@@ -66,8 +66,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                 textonly,
             };
             let (header, results) = execute_query(subcmd.query.as_str(), &options)?;
-            if subcmd.outputheader{
-
+            if subcmd.outputheader {
                 write_to_stdout_with_header(results, &header)?;
             } else {
                 write_to_stdout(results)?;
