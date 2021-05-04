@@ -1,7 +1,7 @@
 use crate::csv::csv_data::CsvData;
 use crate::csv::inference::{ColumnInference, ColumnInferences};
 use crate::db::utils::to_table_parameters;
-use crate::db::Db;
+use crate::db::{Db, Rows, Header};
 use crate::parser::collector::Collector;
 use crate::parser::rewriter::Rewriter;
 use crate::parser::Parser;
@@ -14,7 +14,6 @@ use std::io::Write;
 use std::path::Path;
 use uuid::Uuid;
 
-type Rows = Vec<Vec<String>>;
 pub struct Options {
     pub delimiter: char,
     pub trim: bool,
@@ -25,7 +24,7 @@ pub struct Options {
 pub fn execute_query(
     query: &str,
     options: &Options,
-) -> Result<(Vec<String>, Rows), Box<dyn Error>> {
+) -> Result<(Header, Rows), Box<dyn Error>> {
     let mut collector = Collector::new();
 
     let ast = Parser::parse_sql(query)?;

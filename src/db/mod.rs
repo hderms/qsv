@@ -17,8 +17,8 @@ pub struct Db {
     pub connection: Connection,
 }
 
-type ColumnNames = Vec<String>;
-type Rows = Vec<Vec<String>>;
+pub type Header = Vec<String>;
+pub type Rows = Vec<Vec<String>>;
 impl Db {
     pub fn open_in_memory() -> Result<Db> {
         let connection = Connection::open_in_memory()?;
@@ -80,7 +80,7 @@ impl Db {
         self.connection.execute_batch("END TRANSACTION").unwrap();
     }
 
-    pub fn select_statement(&self, query: &str) -> Result<(ColumnNames, Rows), Box<dyn Error>> {
+    pub fn select_statement(&self, query: &str) -> Result<(Header, Rows), Box<dyn Error>> {
         debug!("Running select statement: {:?}", query);
         let mut statement: CachedStatement = self.connection.prepare_cached(query).unwrap();
         let results = statement
