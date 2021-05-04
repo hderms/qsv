@@ -112,11 +112,7 @@ fn maybe_load_file(
         return Ok(None);
     }
     let mime_type = tree_magic::from_filepath(path);
-    debug!(
-        "File '{}' has MIME type: '{}'",
-        filename,
-        mime_type
-    );
+    debug!("File '{}' has MIME type: '{}'", filename, mime_type);
     let csv = csv_data_from_mime_type(filename, mime_type.as_str(), options)?;
     let path = Path::new(filename);
     debug!(
@@ -146,19 +142,19 @@ fn maybe_load_file(
     files_to_tables.insert(filename.to_string(), String::from(table_name));
     Ok(Some(()))
 }
-fn csv_data_from_mime_type (filename: &str, mime_type: &str, options: &Options) -> Result<CsvData, Box<dyn Error>> {
-     if mime_type == "application/gzip" {
+fn csv_data_from_mime_type(
+    filename: &str,
+    mime_type: &str,
+    options: &Options,
+) -> Result<CsvData, Box<dyn Error>> {
+    if mime_type == "application/gzip" {
         let reader = File::open(filename)?;
         let d = GzDecoder::new(reader);
         CsvData::from_reader(d, filename, options.delimiter, options.trim)
     } else if mime_type == "text/plain" {
         CsvData::from_filename(filename, options.delimiter, options.trim)
     } else {
-        let error_format = format!(
-            "Unsupported MIME type {} for file {}",
-            mime_type,
-            filename
-        );
+        let error_format = format!("Unsupported MIME type {} for file {}", mime_type, filename);
         error!("{}", error_format);
         return Err(error_format.into());
     }
