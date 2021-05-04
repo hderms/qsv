@@ -1,14 +1,14 @@
+use std::error::Error;
 use std::str;
 use std::time::Instant;
 
+use log::debug;
+use rusqlite::{CachedStatement, Connection, Result};
 use rusqlite::functions::FunctionFlags;
 use rusqlite::types::ValueRef;
-use rusqlite::{CachedStatement, Connection, Result};
 
 use crate::db::functions::{calculate_md5, calculate_sqrt, Stddev};
 use crate::db::utils::repeat_vars;
-use log::debug;
-use std::error::Error;
 
 mod functions;
 pub mod utils;

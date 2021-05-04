@@ -1,14 +1,15 @@
+use std::error::Error;
+use std::path::Path;
+
+use clap::{AppSettings, Clap};
+use simple_logger::SimpleLogger;
+
+use crate::qsv::{execute_analysis, execute_query, Options, write_to_stdout, write_to_stdout_with_header};
+
 mod csv;
 mod db;
 mod parser;
 mod qsv;
-
-use crate::qsv::{execute_analysis, execute_query, write_to_stdout};
-use crate::qsv::{write_to_stdout_with_header, Options};
-use clap::{AppSettings, Clap};
-use simple_logger::SimpleLogger;
-use std::error::Error;
-use std::path::Path;
 
 #[derive(Clap)]
 #[clap(
