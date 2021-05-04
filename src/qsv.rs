@@ -68,7 +68,7 @@ pub fn execute_analysis(
     collector.collect(statement); //TODO: should we handle multiple SQL statements later?
     let mut hashmap: HashMap<String, ColumnInference> = HashMap::new();
     for filename in collector.table_identifiers.iter() {
-        if let Ok(inference) = maybe_load_analysis(filename, options) {
+        if let Ok(Some(inference)) = maybe_load_analysis(filename, options) {
             hashmap.insert(filename.clone(), inference);
             debug!(
                 "Potential filename from SQL was able to be loaded: {}",
@@ -87,18 +87,19 @@ pub fn execute_analysis(
 fn maybe_load_analysis(
     filename: &str,
     options: &Options,
-) -> Result<ColumnInference, Box<dyn Error>> {
-    let csv = CsvData::from_filename(filename, options.delimiter, options.trim)?;
-    debug!(
-        "Attempting to load identifier from SQL as file: {}",
-        filename
-    );
+) -> Result<Option<ColumnInference>, Box<dyn Error>> {
+    let path = Path::new(filename);
+    if !path.exists() {
+        return Ok(None);
+    }
+    let mime_type = tree_magic::from_filepath(path);
+    let csv = csv_data_from_mime_type(filename, mime_type.as_str(), options)?;
     let inference = if options.textonly {
         ColumnInference::default_inference(&csv)
     } else {
         ColumnInference::from_csv(&csv)
     };
-    Ok(inference)
+    Ok(Some(inference))
 }
 fn maybe_load_file(
     files_to_tables: &mut HashMap<String, String>,
@@ -116,21 +117,7 @@ fn maybe_load_file(
         filename,
         mime_type
     );
-    let csv = if mime_type == "application/gzip" {
-        let reader = File::open(path)?;
-        let d = GzDecoder::new(reader);
-        CsvData::from_reader(d, filename, options.delimiter, options.trim)?
-    } else if mime_type == "text/plain" {
-        CsvData::from_filename(filename, options.delimiter, options.trim)?
-    } else {
-        let error_format = format!(
-            "Unsupported MIME type {} for file {}",
-            mime_type,
-            filename
-        );
-        error!("{}", error_format);
-        return Err(error_format.into());
-    };
+    let csv = csv_data_from_mime_type(filename, mime_type.as_str(), options)?;
     let path = Path::new(filename);
     debug!(
         "Attempting to load identifier from SQL as file: {}",
@@ -158,6 +145,23 @@ fn maybe_load_file(
     db.insert(table_name, &headers, records);
     files_to_tables.insert(filename.to_string(), String::from(table_name));
     Ok(Some(()))
+}
+fn csv_data_from_mime_type (filename: &str, mime_type: &str, options: &Options) -> Result<CsvData, Box<dyn Error>> {
+     if mime_type == "application/gzip" {
+        let reader = File::open(filename)?;
+        let d = GzDecoder::new(reader);
+        CsvData::from_reader(d, filename, options.delimiter, options.trim)
+    } else if mime_type == "text/plain" {
+        CsvData::from_filename(filename, options.delimiter, options.trim)
+    } else {
+        let error_format = format!(
+            "Unsupported MIME type {} for file {}",
+            mime_type,
+            filename
+        );
+        error!("{}", error_format);
+        return Err(error_format.into());
+    }
 }
 
 fn remove_extension(p0: &Path) -> Option<String> {
