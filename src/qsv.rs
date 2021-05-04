@@ -156,7 +156,7 @@ fn csv_data_from_mime_type(
     } else {
         let error_format = format!("Unsupported MIME type {} for file {}", mime_type, filename);
         error!("{}", error_format);
-        return Err(error_format.into());
+        Err(error_format.into())
     }
 }
 
