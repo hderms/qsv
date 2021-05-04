@@ -138,6 +138,16 @@ mod query_subcommand {
         cmd.assert().success();
         Ok(())
     }
+
+    #[test]
+    fn it_will_run_a_query_and_output_header() -> Result<(), Box<dyn std::error::Error>> {
+        let mut cmd = build_cmd();
+        cmd.arg("select * from testdata/people.csv");
+        cmd.arg("--output-header");
+        cmd.assert().success()
+            .stdout(predicates::str::contains("name,age"));
+        Ok(())
+    }
 }
 mod analyze_subcommand {
     use std::process::Command;

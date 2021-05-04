@@ -183,14 +183,13 @@ pub fn write_to_stdout(results: Rows) -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-fn sanitize(str: Option<&OsStr>) -> Option<String> {
-///Writes a set of rows to STDOUT
+///Writes a set of rows to STDOUT, with the header included
 pub fn write_to_stdout_with_header(results: Rows, header: &Vec<String>) -> Result<(), Box<dyn Error>> {
     let stdout = std::io::stdout();
     let mut lock = stdout.lock();
     let header = header.join(",");
-    lock.write(header.as_bytes());
-    lock.write(&['\n' as u8]);
+    lock.write(header.as_bytes())?;
+    lock.write(&['\n' as u8])?;
     write_to_stdout(results)
 }
 
