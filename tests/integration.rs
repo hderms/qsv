@@ -1,4 +1,3 @@
-#[cfg(test)]
 mod query_subcommand {
     use std::process::Command;
 
@@ -131,8 +130,15 @@ mod query_subcommand {
         cmd.assert().success();
         Ok(())
     }
+
+    #[test]
+    fn it_will_run_a_query_from_a_gz_file() -> Result<(), Box<dyn std::error::Error>> {
+        let mut cmd = build_cmd();
+        cmd.arg("select * from testdata/people.csv.gz");
+        cmd.assert().success();
+        Ok(())
+    }
 }
-#[cfg(test)]
 mod analyze_subcommand {
     use std::process::Command;
 
