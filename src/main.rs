@@ -1,14 +1,17 @@
+use std::error::Error;
+use std::path::Path;
+
+use clap::{AppSettings, Clap};
+use simple_logger::SimpleLogger;
+
+use crate::qsv::{
+    execute_analysis, execute_query, write_to_stdout, write_to_stdout_with_header, Options,
+};
+
 mod csv;
 mod db;
 mod parser;
 mod qsv;
-
-use crate::qsv::Options;
-use crate::qsv::{execute_analysis, execute_query, write_to_stdout};
-use clap::{AppSettings, Clap};
-use simple_logger::SimpleLogger;
-use std::error::Error;
-use std::path::Path;
 
 #[derive(Clap)]
 #[clap(
@@ -36,6 +39,8 @@ struct Query {
     trim: bool,
     #[clap(long)]
     textonly: bool,
+    #[clap(short, long("output-header"))]
+    outputheader: bool,
 }
 
 #[derive(Clap)]
@@ -63,8 +68,12 @@ fn main() -> Result<(), Box<dyn Error>> {
                 trim,
                 textonly,
             };
-            let results = execute_query(subcmd.query.as_str(), &options)?;
-            write_to_stdout(results)?;
+            let (header, results) = execute_query(subcmd.query.as_str(), &options)?;
+            if subcmd.outputheader {
+                write_to_stdout_with_header(results, &header)?;
+            } else {
+                write_to_stdout(results)?;
+            }
         }
         SubCommand::Analyze(subcmd) => {
             let delimiter = subcmd.delimiter;

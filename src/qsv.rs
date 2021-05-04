@@ -1,7 +1,7 @@
 use crate::csv::csv_data::CsvData;
 use crate::csv::inference::{ColumnInference, ColumnInferences};
 use crate::db::utils::to_table_parameters;
-use crate::db::Db;
+use crate::db::{Db, Header, Rows};
 use crate::parser::collector::Collector;
 use crate::parser::rewriter::Rewriter;
 use crate::parser::Parser;
@@ -14,7 +14,6 @@ use std::io::Write;
 use std::path::Path;
 use uuid::Uuid;
 
-type Rows = Vec<Vec<String>>;
 pub struct Options {
     pub delimiter: char,
     pub trim: bool,
@@ -22,7 +21,7 @@ pub struct Options {
 }
 
 ///Executes a query, possibly returning Rows
-pub fn execute_query(query: &str, options: &Options) -> Result<Rows, Box<dyn Error>> {
+pub fn execute_query(query: &str, options: &Options) -> Result<(Header, Rows), Box<dyn Error>> {
     let mut collector = Collector::new();
 
     let ast = Parser::parse_sql(query)?;
@@ -181,6 +180,13 @@ pub fn write_to_stdout(results: Rows) -> Result<(), Box<dyn Error>> {
         buf.write_all(b"\n")?;
     }
     Ok(())
+}
+
+///Writes a set of rows to STDOUT, with the header included
+pub fn write_to_stdout_with_header(results: Rows, header: &[String]) -> Result<(), Box<dyn Error>> {
+    let header = header.join(",");
+    println!("{}", header);
+    write_to_stdout(results)
 }
 
 fn sanitize(str: Option<String>) -> Option<String> {
