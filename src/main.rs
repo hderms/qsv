@@ -4,7 +4,9 @@ use std::path::Path;
 use clap::{AppSettings, Clap};
 use simple_logger::SimpleLogger;
 
-use crate::qsv::{execute_analysis, execute_query, Options, write_to_stdout, write_to_stdout_with_header};
+use crate::qsv::{
+    execute_analysis, execute_query, write_to_stdout, write_to_stdout_with_header, Options,
+};
 
 mod csv;
 mod db;

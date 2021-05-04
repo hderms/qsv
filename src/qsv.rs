@@ -1,7 +1,7 @@
 use crate::csv::csv_data::CsvData;
 use crate::csv::inference::{ColumnInference, ColumnInferences};
 use crate::db::utils::to_table_parameters;
-use crate::db::{Db, Rows, Header};
+use crate::db::{Db, Header, Rows};
 use crate::parser::collector::Collector;
 use crate::parser::rewriter::Rewriter;
 use crate::parser::Parser;
@@ -21,10 +21,7 @@ pub struct Options {
 }
 
 ///Executes a query, possibly returning Rows
-pub fn execute_query(
-    query: &str,
-    options: &Options,
-) -> Result<(Header, Rows), Box<dyn Error>> {
+pub fn execute_query(query: &str, options: &Options) -> Result<(Header, Rows), Box<dyn Error>> {
     let mut collector = Collector::new();
 
     let ast = Parser::parse_sql(query)?;
