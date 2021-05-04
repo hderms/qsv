@@ -8,6 +8,7 @@ use crate::qsv::{execute_analysis, execute_query, write_to_stdout};
 use clap::{AppSettings, Clap};
 use simple_logger::SimpleLogger;
 use std::error::Error;
+use std::path::Path;
 
 #[derive(Clap)]
 #[clap(
@@ -23,6 +24,7 @@ struct Opts {
 enum SubCommand {
     Query(Query),
     Analyze(Analyze),
+    FileType(FileType),
 }
 
 #[derive(Clap)]
@@ -43,6 +45,10 @@ struct Analyze {
     delimiter: char,
     #[clap(long)]
     trim: bool,
+}
+#[derive(Clap)]
+struct FileType {
+    filename: String,
 }
 fn main() -> Result<(), Box<dyn Error>> {
     SimpleLogger::from_env().init()?;
@@ -70,6 +76,12 @@ fn main() -> Result<(), Box<dyn Error>> {
             };
             let results = execute_analysis(subcmd.query.as_str(), &options)?;
             println!("{}", results);
+        }
+
+        SubCommand::FileType(ft) => {
+            let path = Path::new(ft.filename.as_str());
+            let t = tree_magic::from_filepath(path);
+            println!("{}", t);
         }
     }
     Ok(())

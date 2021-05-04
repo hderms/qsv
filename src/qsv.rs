@@ -5,10 +5,11 @@ use crate::db::Db;
 use crate::parser::collector::Collector;
 use crate::parser::rewriter::Rewriter;
 use crate::parser::Parser;
-use log::debug;
+use flate2::read::GzDecoder;
+use log::{debug, error};
 use std::collections::HashMap;
 use std::error::Error;
-use std::ffi::OsStr;
+use std::fs::File;
 use std::io::Write;
 use std::path::Path;
 use uuid::Uuid;
@@ -31,16 +32,21 @@ pub fn execute_query(query: &str, options: &Options) -> Result<Rows, Box<dyn Err
     collector.collect(statement); //TODO: should we handle multiple SQL statements later?
     let mut files_to_tables = HashMap::new();
     for filename in collector.table_identifiers.iter() {
-        if let Ok(()) = maybe_load_file(&mut files_to_tables, filename, &mut db, options) {
-            debug!(
-                "Potential filename from SQL was able to be loaded: {}",
-                filename
-            );
-        } else {
-            debug!(
-                "Identifier in SQL could not be loaded as file: {}",
-                filename
-            );
+        let maybe_load = maybe_load_file(&mut files_to_tables, filename, &mut db, options);
+        match maybe_load {
+            Ok(Some(())) => {
+                debug!(
+                    "Potential filename from SQL was able to be loaded: {}",
+                    filename
+                );
+            }
+            Ok(None) => {
+                debug!(
+                    "Identifier in SQL could not be loaded as file, as it didn't exist: {}",
+                    filename
+                );
+            }
+            Err(e) => return Err(e),
         }
     }
     let rewritten = Rewriter::new(files_to_tables);
@@ -62,7 +68,7 @@ pub fn execute_analysis(
     collector.collect(statement); //TODO: should we handle multiple SQL statements later?
     let mut hashmap: HashMap<String, ColumnInference> = HashMap::new();
     for filename in collector.table_identifiers.iter() {
-        if let Ok(inference) = maybe_load_analysis(filename, options) {
+        if let Ok(Some(inference)) = maybe_load_analysis(filename, options) {
             hashmap.insert(filename.clone(), inference);
             debug!(
                 "Potential filename from SQL was able to be loaded: {}",
@@ -81,33 +87,41 @@ pub fn execute_analysis(
 fn maybe_load_analysis(
     filename: &str,
     options: &Options,
-) -> Result<ColumnInference, Box<dyn Error>> {
-    let csv = CsvData::from_filename(filename, options.delimiter, options.trim)?;
-    debug!(
-        "Attempting to load identifier from SQL as file: {}",
-        filename
-    );
+) -> Result<Option<ColumnInference>, Box<dyn Error>> {
+    let path = Path::new(filename);
+    if !path.exists() {
+        return Ok(None);
+    }
+    let mime_type = tree_magic::from_filepath(path);
+    let csv = csv_data_from_mime_type(filename, mime_type.as_str(), options)?;
     let inference = if options.textonly {
         ColumnInference::default_inference(&csv)
     } else {
         ColumnInference::from_csv(&csv)
     };
-    Ok(inference)
+    Ok(Some(inference))
 }
 fn maybe_load_file(
     files_to_tables: &mut HashMap<String, String>,
     filename: &str,
     db: &mut Db,
     options: &Options,
-) -> Result<(), Box<dyn Error>> {
-    let csv = CsvData::from_filename(filename, options.delimiter, options.trim)?;
+) -> Result<Option<()>, Box<dyn Error>> {
+    let path = Path::new(filename);
+    if !path.exists() {
+        return Ok(None);
+    }
+    let mime_type = tree_magic::from_filepath(path);
+    debug!("File '{}' has MIME type: '{}'", filename, mime_type);
+    let csv = csv_data_from_mime_type(filename, mime_type.as_str(), options)?;
     let path = Path::new(filename);
     debug!(
         "Attempting to load identifier from SQL as file: {}",
         filename
     );
-    let table_name = path.file_stem(); //TODO: should we canonicalize path?
-    let table_name = sanitize(table_name).unwrap_or_else(|| Uuid::new_v4().to_string());
+    let without_extension = remove_extension(path);
+    let table_name = sanitize(without_extension)
+        .unwrap_or_else(|| String::from("t") + &Uuid::new_v4().as_u128().to_string());
     let inference = if options.textonly {
         ColumnInference::default_inference(&csv)
     } else {
@@ -126,8 +140,37 @@ fn maybe_load_file(
     debug!("Inserting {} rows into {}", records.len(), table_name);
     db.insert(table_name, &headers, records);
     files_to_tables.insert(filename.to_string(), String::from(table_name));
-    Ok(())
+    Ok(Some(()))
 }
+fn csv_data_from_mime_type(
+    filename: &str,
+    mime_type: &str,
+    options: &Options,
+) -> Result<CsvData, Box<dyn Error>> {
+    if mime_type == "application/gzip" {
+        let reader = File::open(filename)?;
+        let d = GzDecoder::new(reader);
+        CsvData::from_reader(d, filename, options.delimiter, options.trim)
+    } else if mime_type == "text/plain" {
+        CsvData::from_filename(filename, options.delimiter, options.trim)
+    } else {
+        let error_format = format!("Unsupported MIME type {} for file {}", mime_type, filename);
+        error!("{}", error_format);
+        Err(error_format.into())
+    }
+}
+
+fn remove_extension(p0: &Path) -> Option<String> {
+    let file_name = p0.file_name()?;
+    let file_str = file_name.to_str()?;
+    let mut split = file_str.split('.');
+    if let Some(str) = split.next() {
+        Some(String::from(str))
+    } else {
+        None
+    }
+}
+
 ///Writes a set of rows to STDOUT
 pub fn write_to_stdout(results: Rows) -> Result<(), Box<dyn Error>> {
     let stdout = std::io::stdout();
@@ -140,9 +183,9 @@ pub fn write_to_stdout(results: Rows) -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-fn sanitize(str: Option<&OsStr>) -> Option<String> {
+fn sanitize(str: Option<String>) -> Option<String> {
     match str {
-        Some(s) => s.to_str().map(|v| v.replace(" ", "_")),
+        Some(s) => Some(s.replace(" ", "_")),
         None => None,
     }
 }

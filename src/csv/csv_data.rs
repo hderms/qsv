@@ -2,6 +2,7 @@ use csv::{StringRecord, Trim};
 use log::debug;
 use std::error::Error;
 use std::fmt::{Display, Formatter};
+use std::fs::File;
 
 #[derive(Eq, PartialEq, Debug)]
 pub enum CsvWrapper {
@@ -44,13 +45,23 @@ impl CsvData {
         trim: bool,
     ) -> Result<CsvData, Box<dyn Error>> {
         debug!("Trying to load CSV from filename {}", filename);
+        let file = File::open(filename)?;
+        CsvData::from_reader(file, filename, delimiter, trim)
+    }
+
+    pub fn from_reader<R: std::io::Read>(
+        reader: R,
+        filename: &str,
+        delimiter: char,
+        trim: bool,
+    ) -> Result<CsvData, Box<dyn Error>> {
         let mut records = Vec::with_capacity(10000);
         let trim = if trim { Trim::All } else { Trim::None };
         let mut rdr = csv::ReaderBuilder::new()
             .buffer_capacity(16 * (1 << 10))
             .delimiter(delimiter as u8)
             .trim(trim)
-            .from_path(filename)?;
+            .from_reader(reader);
 
         for result in rdr.records() {
             let record = result?;
