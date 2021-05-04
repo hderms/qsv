@@ -21,7 +21,7 @@ pub struct Options {
 }
 
 ///Executes a query, possibly returning Rows
-pub fn execute_query(query: &str, options: &Options) -> Result<Rows, Box<dyn Error>> {
+pub fn execute_query(query: &str, options: &Options) -> Result<(Vec<String>, Rows), Box<dyn Error>> {
     let mut collector = Collector::new();
 
     let ast = Parser::parse_sql(query)?;
@@ -49,6 +49,7 @@ pub fn execute_query(query: &str, options: &Options) -> Result<Rows, Box<dyn Err
     debug!("Rewritten query: {}", to_rewrite.to_string());
     db.select_statement(to_rewrite.to_string().as_str())
 }
+
 
 ///Executes a query, possibly returning Rows
 pub fn execute_analysis(
@@ -141,6 +142,17 @@ pub fn write_to_stdout(results: Rows) -> Result<(), Box<dyn Error>> {
 }
 
 fn sanitize(str: Option<&OsStr>) -> Option<String> {
+///Writes a set of rows to STDOUT
+pub fn write_to_stdout_with_header(results: Rows, header: &Vec<String>) -> Result<(), Box<dyn Error>> {
+    let stdout = std::io::stdout();
+    let mut lock = stdout.lock();
+    let header = header.join(",");
+    lock.write(header.as_bytes());
+    lock.write(&['\n' as u8]);
+    write_to_stdout(results)
+}
+
+fn sanitize(str: Option<String>) -> Option<String> {
     match str {
         Some(s) => s.to_str().map(|v| v.replace(" ", "_")),
         None => None,

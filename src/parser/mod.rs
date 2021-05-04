@@ -4,6 +4,7 @@ use sqlparser::parser::{Parser as SqlParser, ParserError};
 
 pub mod collector;
 pub mod rewriter;
+
 pub struct Parser {}
 impl Parser {
     /// Parse SQL using our CSVDialect
