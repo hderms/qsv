@@ -1,5 +1,6 @@
 use crate::csv::csv_data::{CsvData, CsvType};
 use crate::csv::inference::ColumnInference;
+use format_sql_query::{Column, Table};
 
 const INTEGER_STRING: &str = "integer";
 const TEXT_STRING: &str = "text";
@@ -8,16 +9,17 @@ pub fn to_table_parameters(csv_data: &CsvData, column_inference: &ColumnInferenc
     let mut vec = Vec::with_capacity(csv_data.headers.len());
     for header in csv_data.headers.iter() {
         let column_type = column_inference.get_type(header.to_string()).unwrap();
+        let table_name = escape_table(header);
         let string = match column_type {
             CsvType::Integer => {
-                format!("{} {}", header, INTEGER_STRING)
+                format!("{} {}", table_name, INTEGER_STRING)
             }
             CsvType::String => {
-                format!("{} {}", header, TEXT_STRING)
+                format!("{} {}", table_name, TEXT_STRING)
             }
 
             CsvType::Float => {
-                format!("{} {}", header, FLOAT_STRING)
+                format!("{} {}", table_name, FLOAT_STRING)
             }
         };
         vec.push(string);
@@ -37,6 +39,16 @@ pub fn repeat_vars(count: usize) -> String {
     // Remove trailing comma
     s.pop();
     s
+}
+
+pub fn escape_fields(fields: &[&str]) -> Vec<String> {
+    fields
+        .iter()
+        .map(|&field| format!("{}", Column(field.to_string().as_str().into())))
+        .collect()
+}
+pub fn escape_table(table_name: &str) -> String {
+    format!("{}", Table(table_name.to_string().as_str().into()))
 }
 
 #[cfg(test)]
@@ -60,5 +72,29 @@ mod tests {
     #[should_panic]
     fn it_fails_above_1000() {
         repeat_vars(1001);
+    }
+
+    #[test]
+    fn it_escapes_tables() {
+        assert_eq!(escape_table("foo bar"), String::from("\"foo bar\""));
+        assert_eq!(
+            escape_table("bobby\"; drop table foo"),
+            String::from("\"bobby\"\"; drop table foo\"")
+        )
+    }
+
+    #[test]
+    fn it_escapes_fields() {
+        assert_eq!(
+            escape_fields(&["foo bar"]),
+            vec!(String::from("\"foo bar\""))
+        );
+        assert_eq!(
+            escape_fields(&["foo bar", "\"foo; drop table bar;"]),
+            vec!(
+                String::from("\"foo bar\""),
+                String::from("\"\"\"foo; drop table bar;\"")
+            )
+        )
     }
 }
