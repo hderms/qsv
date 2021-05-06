@@ -1,9 +1,9 @@
 use crate::csv::csv_data::{CsvData, CsvType, CsvWrapper};
 use csv::StringRecord;
 use log::debug;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fmt::{Display, Formatter};
-use std::num::ParseIntError;
+use std::num::{ParseFloatError, ParseIntError};
 
 /// a record of the inferred types for columns in a CSV
 #[derive(Debug)]
@@ -75,42 +75,93 @@ impl ColumnInference {
     }
 }
 fn parse(s: &str) -> CsvWrapper {
-    let is_numeric: Result<i64, ParseIntError> = s.parse();
-    is_numeric
-        .map(CsvWrapper::Numeric)
+    let is_integer: Result<i64, ParseIntError> = s.parse();
+    let is_float: Result<f64, ParseFloatError> = s.parse();
+    let is_integer = is_integer.map(CsvWrapper::Integer);
+    let is_float = is_float.map(CsvWrapper::Float);
+    is_integer
+        .or(is_float)
         .unwrap_or_else(|_| CsvWrapper::String(String::from(s)))
 }
 
 fn get_type_of_column(csv: &[StringRecord], index: usize) -> CsvType {
-    let t = parse(csv[0].get(index).unwrap()).get_type();
+    let mut distinct_types = HashSet::new();
     for record in csv.iter() {
         let parsed_type = parse(record.get(index).unwrap()).get_type();
-        if parsed_type != t {
-            return CsvType::String;
-        }
+        distinct_types.insert(parsed_type);
     }
-    t
+    if distinct_types.contains(&CsvType::String) {
+        CsvType::String
+    } else if distinct_types.contains(&CsvType::Integer) && distinct_types.contains(&CsvType::Float)
+    {
+        CsvType::Float
+    } else if distinct_types.len() == 1 {
+        distinct_types.iter().next().unwrap().to_owned()
+    } else {
+        CsvType::String
+    }
 }
 #[cfg(test)]
 mod test {
     use super::*;
     #[test]
     fn it_should_parse_integers() {
-        assert_eq!(parse("1"), CsvWrapper::Numeric(1));
-        assert_eq!(parse("-1"), CsvWrapper::Numeric(-1));
+        assert_eq!(parse("1"), CsvWrapper::Integer(1));
+        assert_eq!(parse("-1"), CsvWrapper::Integer(-1));
     }
     #[test]
     fn it_should_parse_strings() {
         assert_eq!(parse("foo"), CsvWrapper::String(String::from("foo")));
         assert_eq!(parse("bar"), CsvWrapper::String(String::from("bar")));
     }
+
+    #[test]
+    fn it_should_parse_floats() {
+        assert_eq!(parse("1.00000009"), CsvWrapper::Float(1.00000009f64));
+    }
+
     #[test]
     fn it_should_recognize_integer_column() {
+        let filename: String = String::from("foo.csv");
+        let headers = StringRecord::from(vec!["bar"]);
+        let records = vec![StringRecord::from(vec!["1"]), StringRecord::from(vec!["2"])];
+        let inference = ColumnInference::from_csv(&CsvData {
+            headers,
+            records,
+            filename,
+        });
+        assert_eq!(
+            inference.get_type(String::from("bar")),
+            Some(&CsvType::Integer)
+        );
+    }
+
+    #[test]
+    fn it_should_recognize_float_column() {
+        let filename: String = String::from("foo.csv");
+        let headers = StringRecord::from(vec!["bar"]);
+        let records = vec![
+            StringRecord::from(vec!["1.0"]),
+            StringRecord::from(vec!["2.0"]),
+        ];
+        let inference = ColumnInference::from_csv(&CsvData {
+            headers,
+            records,
+            filename,
+        });
+        assert_eq!(
+            inference.get_type(String::from("bar")),
+            Some(&CsvType::Float)
+        );
+    }
+
+    #[test]
+    fn it_should_classify_mixed_floats_as_float() {
         let filename: String = String::from("foo.csv");
         let headers = StringRecord::from(vec!["foo", "bar"]);
         let records = vec![
             StringRecord::from(vec!["entry1", "1"]),
-            StringRecord::from(vec!["entry2", "2"]),
+            StringRecord::from(vec!["entry2", "2.0"]),
         ];
         let inference = ColumnInference::from_csv(&CsvData {
             headers,
@@ -123,7 +174,31 @@ mod test {
         );
         assert_eq!(
             inference.get_type(String::from("bar")),
-            Some(&CsvType::Numeric)
+            Some(&CsvType::Float)
+        );
+    }
+
+    #[test]
+    fn it_should_classify_any_column_with_string_as_string() {
+        let filename: String = String::from("foo.csv");
+        let headers = StringRecord::from(vec!["foo", "bar"]);
+        let records = vec![
+            StringRecord::from(vec!["entry1", "1"]),
+            StringRecord::from(vec!["entry2", "2.0"]),
+            StringRecord::from(vec!["entry3", "foobar"]),
+        ];
+        let inference = ColumnInference::from_csv(&CsvData {
+            headers,
+            records,
+            filename,
+        });
+        assert_eq!(
+            inference.get_type(String::from("foo")),
+            Some(&CsvType::String)
+        );
+        assert_eq!(
+            inference.get_type(String::from("bar")),
+            Some(&CsvType::String)
         );
     }
 

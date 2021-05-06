@@ -4,15 +4,17 @@ use std::error::Error;
 use std::fmt::{Display, Formatter};
 use std::fs::File;
 
-#[derive(Eq, PartialEq, Debug)]
+#[derive(PartialEq, Debug)]
 pub enum CsvWrapper {
-    Numeric(i64),
+    Integer(i64),
+    Float(f64),
     String(String),
 }
 impl CsvWrapper {
     pub fn get_type(&self) -> CsvType {
         match self {
-            CsvWrapper::Numeric(_) => CsvType::Numeric,
+            CsvWrapper::Integer(_) => CsvType::Integer,
+            CsvWrapper::Float(_) => CsvType::Float,
             CsvWrapper::String(_) => CsvType::String,
         }
     }
@@ -20,13 +22,15 @@ impl CsvWrapper {
 
 #[derive(Debug, Eq, Hash, Clone, Copy, PartialEq)]
 pub enum CsvType {
-    Numeric,
+    Integer,
+    Float,
     String,
 }
 impl Display for CsvType {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            CsvType::Numeric => f.write_str("numeric"),
+            CsvType::Integer => f.write_str("integer"),
+            CsvType::Float => f.write_str("float"),
             CsvType::String => f.write_str("text"),
         }
     }

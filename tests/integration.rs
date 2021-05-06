@@ -168,6 +168,29 @@ mod query_subcommand {
         cmd.assert().success();
         Ok(())
     }
+    #[test]
+    fn it_will_handle_a_column_of_floats() -> Result<(), Box<dyn std::error::Error>> {
+        let mut cmd = build_cmd();
+        cmd.arg("select avg(number) from testdata/all_floats.csv");
+        cmd.arg("--textonly");
+        cmd.assert()
+            .success()
+            .stdout(predicates::str::contains("2.5100000000000002"));
+        Ok(())
+    }
+
+    #[test]
+    fn it_will_handle_a_column_of_mixed_floats() -> Result<(), Box<dyn std::error::Error>> {
+        let mut cmd = build_cmd();
+        cmd.arg("select avg(number) from testdata/mixed_floats.csv");
+        cmd.arg("--textonly");
+        cmd.assert()
+            .success()
+            .stdout(predicates::str::contains("2.14"));
+        Ok(())
+    }
+    #[test]
+
 }
 mod analyze_subcommand {
     use std::process::Command;
