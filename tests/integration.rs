@@ -171,6 +171,25 @@ mod query_subcommand {
             .stdout(predicates::str::contains("2.14"));
         Ok(())
     }
+
+    #[test]
+    fn it_rejects_multiple_sql_statements_in_query() -> Result<(), Box<dyn std::error::Error>> {
+        let mut cmd = build_cmd();
+        cmd.arg("select 1 = 1;select 1 = 1;");
+        cmd.arg("--textonly");
+        cmd.assert().failure();
+        Ok(())
+    }
+
+    #[test]
+    fn it_succeeds_with_a_single_statement_ended_with_semicolon(
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        let mut cmd = build_cmd();
+        cmd.arg("select 1 = 1;");
+        cmd.arg("--textonly");
+        cmd.assert().success();
+        Ok(())
+    }
 }
 mod analyze_subcommand {
     use std::process::Command;

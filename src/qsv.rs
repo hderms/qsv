@@ -26,6 +26,9 @@ pub fn execute_query(query: &str, options: &Options) -> Result<(Header, Rows), B
 
     let ast = Parser::parse_sql(query)?;
     let mut db = Db::open_in_memory()?;
+    if ast.len() != 1 {
+        return Err("Expected exactly one SQL statement in query input".into());
+    }
     let statement = &ast[0];
 
     collector.collect(statement); //TODO: should we handle multiple SQL statements later?
