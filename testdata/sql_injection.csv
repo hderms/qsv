@@ -1,0 +1,3 @@
+occupation,minimumage";select load_extension("foo")
+Bartender,18
+Construction Worker,18

@@ -8,7 +8,7 @@ use rusqlite::types::ValueRef;
 use rusqlite::{CachedStatement, Connection, Result};
 
 use crate::db::functions::{calculate_md5, calculate_sqrt, Stddev};
-use crate::db::utils::repeat_vars;
+use crate::db::utils::{escape_fields, escape_table, repeat_vars};
 
 mod functions;
 pub mod utils;
@@ -54,17 +54,20 @@ impl Db {
     }
 
     pub fn create_table(&mut self, table_name: &str, fields: &[&str]) -> Result<usize> {
-        let string = format!("create table {} ({});", table_name, fields.join(", "));
+        let string = format!(
+            "create table {} ({});",
+            escape_table(table_name),
+            fields.join(", ")
+        );
         self.connection.execute(string.as_str(), [])
     }
 
     pub fn insert(&mut self, table_name: &str, fields: &[&str], values: Vec<Vec<&str>>) {
         let fields_len = fields.len();
-        let fields = fields.join(",");
         let string = format!(
             "INSERT INTO {} ({}) values ({})",
-            table_name,
-            fields,
+            escape_table(table_name),
+            escape_fields(fields).join(", "),
             repeat_vars(fields_len)
         );
         let mut stmt = self.connection.prepare_cached(string.as_str()).unwrap();
@@ -82,6 +85,7 @@ impl Db {
 
     pub fn select_statement(&self, query: &str) -> Result<(Header, Rows), Box<dyn Error>> {
         debug!("Running select statement: {:?}", query);
+
         let mut statement: CachedStatement = self.connection.prepare_cached(query).unwrap();
         let results = statement
             .query_map([], move |row| {

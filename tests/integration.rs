@@ -192,6 +192,22 @@ mod query_subcommand {
         cmd.assert().success();
         Ok(())
     }
+
+    #[test]
+    fn it_succeeds_with_a_csv_with_spaces_in_headers() -> Result<(), Box<dyn std::error::Error>> {
+        let mut cmd = build_cmd();
+        cmd.arg("select \"minimum age\" from testdata/occupations_with_spaces_in_headers.csv");
+        cmd.assert().success();
+        Ok(())
+    }
+
+    #[test]
+    fn it_succeeds_without_running_sql_in_file_headers() -> Result<(), Box<dyn std::error::Error>> {
+        let mut cmd = build_cmd();
+        cmd.arg("select \"minimum age\" from testdata/sql_injection.csv");
+        cmd.assert().success();
+        Ok(())
+    }
 }
 mod analyze_subcommand {
     use std::process::Command;
