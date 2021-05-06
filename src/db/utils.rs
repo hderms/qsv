@@ -3,16 +3,21 @@ use crate::csv::inference::ColumnInference;
 
 const INTEGER_STRING: &str = "integer";
 const TEXT_STRING: &str = "text";
+const FLOAT_STRING: &str = "real";
 pub fn to_table_parameters(csv_data: &CsvData, column_inference: &ColumnInference) -> Vec<String> {
     let mut vec = Vec::with_capacity(csv_data.headers.len());
     for header in csv_data.headers.iter() {
         let column_type = column_inference.get_type(header.to_string()).unwrap();
         let string = match column_type {
-            CsvType::Numeric => {
+            CsvType::Integer => {
                 format!("{} {}", header, INTEGER_STRING)
             }
             CsvType::String => {
                 format!("{} {}", header, TEXT_STRING)
+            }
+
+            CsvType::Float => {
+                format!("{} {}", header, FLOAT_STRING)
             }
         };
         vec.push(string);

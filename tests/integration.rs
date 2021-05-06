@@ -149,23 +149,26 @@ mod query_subcommand {
             .stdout(predicates::str::contains("name,age"));
         Ok(())
     }
+
     #[test]
-    fn it_will_run_with_the_same_file_referenced_multiple_times(
-    ) -> Result<(), Box<dyn std::error::Error>> {
+    fn it_will_handle_a_column_of_floats() -> Result<(), Box<dyn std::error::Error>> {
         let mut cmd = build_cmd();
-        cmd.arg("select column from testdata/sortable_columns.csv union select column from testdata/sortable_columns.csv");
+        cmd.arg("select avg(number) from testdata/all_floats.csv");
         cmd.arg("--textonly");
-        cmd.assert().success();
+        cmd.assert()
+            .success()
+            .stdout(predicates::str::contains("2.5100000000000002"));
         Ok(())
     }
 
     #[test]
-    fn it_will_run_with_the_same_file_referenced_multiple_times_but_different_aliases(
-    ) -> Result<(), Box<dyn std::error::Error>> {
+    fn it_will_handle_a_column_of_mixed_floats() -> Result<(), Box<dyn std::error::Error>> {
         let mut cmd = build_cmd();
-        cmd.arg("select column from testdata/sortable_columns.csv as sortable1 union select column from testdata/sortable_columns.csv as sortable2");
+        cmd.arg("select avg(number) from testdata/mixed_floats.csv");
         cmd.arg("--textonly");
-        cmd.assert().success();
+        cmd.assert()
+            .success()
+            .stdout(predicates::str::contains("2.14"));
         Ok(())
     }
 }
@@ -205,7 +208,7 @@ mod analyze_subcommand {
         cmd.assert()
             .success()
             .stdout(predicates::str::contains("./testdata/occupations.csv:"))
-            .stdout(predicates::str::contains("minimum_age -> numeric"))
+            .stdout(predicates::str::contains("minimum_age -> integer"))
             .stdout(predicates::str::contains("occupation -> text"));
         Ok(())
     }
@@ -228,11 +231,11 @@ mod analyze_subcommand {
         cmd.assert()
             .success()
             .stdout(predicates::str::contains("./testdata/occupations.csv:"))
-            .stdout(predicates::str::contains("minimum_age -> numeric"))
+            .stdout(predicates::str::contains("minimum_age -> integer"))
             .stdout(predicates::str::contains("occupation -> text"))
             .stdout(predicates::str::contains("./testdata/people.csv:"))
             .stdout(predicates::str::contains("name -> text"))
-            .stdout(predicates::str::contains("age -> numeric"));
+            .stdout(predicates::str::contains("age -> integer"));
 
         Ok(())
     }
