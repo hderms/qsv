@@ -177,7 +177,9 @@ mod query_subcommand {
         let mut cmd = build_cmd();
         cmd.arg("select 1 = 1;select 1 = 1;");
         cmd.arg("--textonly");
-        cmd.assert().failure().stderr(predicates::str::contains("Expected exactly one SQL statement in query input"));
+        cmd.assert().failure().stderr(predicates::str::contains(
+            "Expected exactly one SQL statement in query input",
+        ));
         Ok(())
     }
 
