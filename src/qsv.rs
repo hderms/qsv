@@ -129,16 +129,24 @@ fn maybe_load_file(
     let table_parameters = to_table_parameters(&csv, &inference);
     let table_parameters: Vec<&str> = table_parameters.iter().map(|s| s.as_str()).collect();
     let table_name = table_name.as_str();
-    debug!(
-        "Attempting to create table {} for filename {}",
-        table_name, filename
-    );
-    db.create_table(table_name, &table_parameters)?;
-    let headers: Vec<&str> = csv.headers.iter().collect();
-    let records: Vec<Vec<&str>> = csv.records.iter().map(|r| r.iter().collect()).collect();
-    debug!("Inserting {} rows into {}", records.len(), table_name);
-    db.insert(table_name, &headers, records);
-    files_to_tables.insert(filename.to_string(), String::from(table_name));
+
+    if !files_to_tables.values().any(|s| s == table_name) {
+        debug!(
+            "Attempting to create table {} for filename {}",
+            table_name, filename
+        );
+        db.create_table(table_name, &table_parameters)?;
+        let headers: Vec<&str> = csv.headers.iter().collect();
+        let records: Vec<Vec<&str>> = csv.records.iter().map(|r| r.iter().collect()).collect();
+        debug!("Inserting {} rows into {}", records.len(), table_name);
+        db.insert(table_name, &headers, records);
+        files_to_tables.insert(filename.to_string(), String::from(table_name));
+    } else {
+        debug!(
+            "Table already exists {} for filename {}, not creating it or inserting records",
+            table_name, filename
+        );
+    }
     Ok(Some(()))
 }
 fn csv_data_from_mime_type(
