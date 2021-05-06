@@ -149,25 +149,7 @@ mod query_subcommand {
             .stdout(predicates::str::contains("name,age"));
         Ok(())
     }
-    #[test]
-    fn it_will_run_with_the_same_file_referenced_multiple_times(
-    ) -> Result<(), Box<dyn std::error::Error>> {
-        let mut cmd = build_cmd();
-        cmd.arg("select column from testdata/sortable_columns.csv union select column from testdata/sortable_columns.csv");
-        cmd.arg("--textonly");
-        cmd.assert().success();
-        Ok(())
-    }
 
-    #[test]
-    fn it_will_run_with_the_same_file_referenced_multiple_times_but_different_aliases(
-    ) -> Result<(), Box<dyn std::error::Error>> {
-        let mut cmd = build_cmd();
-        cmd.arg("select column from testdata/sortable_columns.csv as sortable1 union select column from testdata/sortable_columns.csv as sortable2");
-        cmd.arg("--textonly");
-        cmd.assert().success();
-        Ok(())
-    }
     #[test]
     fn it_will_handle_a_column_of_floats() -> Result<(), Box<dyn std::error::Error>> {
         let mut cmd = build_cmd();
@@ -189,8 +171,6 @@ mod query_subcommand {
             .stdout(predicates::str::contains("2.14"));
         Ok(())
     }
-    #[test]
-
 }
 mod analyze_subcommand {
     use std::process::Command;
