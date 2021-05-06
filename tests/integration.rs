@@ -208,7 +208,7 @@ mod analyze_subcommand {
         cmd.assert()
             .success()
             .stdout(predicates::str::contains("./testdata/occupations.csv:"))
-            .stdout(predicates::str::contains("minimum_age -> numeric"))
+            .stdout(predicates::str::contains("minimum_age -> integer"))
             .stdout(predicates::str::contains("occupation -> text"));
         Ok(())
     }
@@ -231,11 +231,11 @@ mod analyze_subcommand {
         cmd.assert()
             .success()
             .stdout(predicates::str::contains("./testdata/occupations.csv:"))
-            .stdout(predicates::str::contains("minimum_age -> numeric"))
+            .stdout(predicates::str::contains("minimum_age -> integer"))
             .stdout(predicates::str::contains("occupation -> text"))
             .stdout(predicates::str::contains("./testdata/people.csv:"))
             .stdout(predicates::str::contains("name -> text"))
-            .stdout(predicates::str::contains("age -> numeric"));
+            .stdout(predicates::str::contains("age -> integer"));
 
         Ok(())
     }
