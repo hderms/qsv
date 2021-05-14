@@ -1,4 +1,4 @@
-use csv::{StringRecord, Trim};
+use csv::{StringRecord, Trim, Reader};
 use log::debug;
 use std::error::Error;
 use std::fmt::{Display, Formatter};
@@ -79,6 +79,37 @@ impl CsvData {
             filename: String::from(filename),
         })
     }
+}
+pub struct CsvStream<R: std::io::Read>{
+    pub headers: StringRecord,
+    pub filename: String,
+    pub stream: Reader<R>
+}
+impl<R: std::io::Read> CsvStream<R> {
+
+    pub fn from_reader(
+        reader: R,
+        filename: &str,
+        delimiter: char,
+        trim: bool,
+    ) -> Result<CsvStream<R>, Box<dyn Error>> {
+        let trim = if trim { Trim::All } else { Trim::None };
+        let mut stream: Reader<R> = csv::ReaderBuilder::new()
+            .buffer_capacity(16 * (1 << 10))
+            .delimiter(delimiter as u8)
+            .trim(trim)
+            .from_reader(reader);
+
+
+        let headers = stream.headers()?;
+        let csv_stream: CsvStream<R> = CsvStream {
+            headers: headers.clone(),
+            filename: String::from(filename),
+            stream
+        };
+        Ok(csv_stream)
+    }
+
 }
 
 #[cfg(test)]

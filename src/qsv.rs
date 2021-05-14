@@ -1,4 +1,4 @@
-use crate::csv::csv_data::CsvData;
+use crate::csv::csv_data::{CsvData, CsvStream, CsvType};
 use crate::csv::inference::{ColumnInference, ColumnInferences};
 use crate::db::utils::to_table_parameters;
 use crate::db::{Db, Header, Rows};
@@ -10,7 +10,7 @@ use log::{debug, error};
 use std::collections::HashMap;
 use std::error::Error;
 use std::fs::File;
-use std::io::Write;
+use std::io::{Write, Read};
 use std::path::Path;
 use uuid::Uuid;
 
@@ -86,6 +86,42 @@ pub fn execute_analysis(
     Ok(ColumnInferences::new(hashmap))
 }
 
+///Executes a query, possibly returning Rows
+pub fn execute_statistics(
+    filename: &String,
+    options: &Options,
+) -> Result<ColumnInferences, Box<dyn Error>> {
+    let mut hashmap: HashMap<String, ColumnInference> = HashMap::new();
+    if let Ok((inference, ref mut csv_stream)) = maybe_load_stats(filename, options) {
+        // hashmap.insert(filename.clone(), inference);
+        for (key, value) in inference.columns_to_types {
+            match value {
+                CsvType::Integer => {
+                    for record in csv_stream.stream.records() {
+                        let record = record?;
+                        record.
+
+                    }
+
+                }
+                CsvType::Float => {}
+                CsvType::String => {}
+            }
+
+        }
+        debug!(
+            "Potential filename from SQL was able to be loaded: {}",
+            filename
+        );
+    } else {
+        debug!(
+            "Identifier in SQL could not be loaded as file: {}",
+            filename
+        );
+    }
+    Ok(ColumnInferences::new(hashmap))
+}
+
 fn maybe_load_analysis(
     filename: &str,
     options: &Options,
@@ -102,6 +138,25 @@ fn maybe_load_analysis(
         ColumnInference::from_csv(&csv)
     };
     Ok(Some(inference))
+}
+
+fn maybe_load_stats(
+    filename: &str,
+    options: &Options,
+) -> Result<(ColumnInference, CsvStream<Box<dyn Read>>), Box<dyn Error>> {
+    let path = Path::new(filename);
+    if !path.exists() {
+        return Err("failed to find path".into())
+    }
+    let mime_type = tree_magic::from_filepath(path);
+    let mut csv = csv_stream_from_mime_type(filename, mime_type.as_str(), options)?;
+    let inference = if options.textonly {
+        ColumnInference::default_inference_csv_stream(&csv)
+    } else {
+        ColumnInference::from_stream(&mut csv)?
+    };
+    println!("{}", inference);
+    Ok((inference, csv))
 }
 fn maybe_load_file(
     files_to_tables: &mut HashMap<String, String>,
@@ -163,6 +218,25 @@ fn csv_data_from_mime_type(
         CsvData::from_reader(d, filename, options.delimiter, options.trim)
     } else if mime_type == "text/plain" {
         CsvData::from_filename(filename, options.delimiter, options.trim)
+    } else {
+        let error_format = format!("Unsupported MIME type {} for file {}", mime_type, filename);
+        error!("{}", error_format);
+        Err(error_format.into())
+    }
+}
+
+fn csv_stream_from_mime_type(
+    filename: &str,
+    mime_type: &str,
+    options: &Options,
+) -> Result<CsvStream<Box<dyn Read>>, Box<dyn Error>> {
+    if mime_type == "application/gzip" {
+        let reader = File::open(filename)?;
+        let d = GzDecoder::new(reader);
+        CsvStream::from_reader(Box::new(d), filename, options.delimiter, options.trim)
+    } else if mime_type == "text/plain" {
+        let reader = File::open(filename)?;
+        CsvStream::from_reader(Box::new(reader), filename, options.delimiter, options.trim)
     } else {
         let error_format = format!("Unsupported MIME type {} for file {}", mime_type, filename);
         error!("{}", error_format);

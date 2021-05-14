@@ -1,4 +1,4 @@
-use crate::csv::csv_data::{CsvData, CsvType, CsvWrapper};
+use crate::csv::csv_data::{CsvData, CsvType, CsvWrapper, CsvStream};
 use csv::StringRecord;
 use log::debug;
 use std::collections::{HashMap, HashSet};
@@ -8,7 +8,7 @@ use std::num::{ParseFloatError, ParseIntError};
 /// a record of the inferred types for columns in a CSV
 #[derive(Debug)]
 pub struct ColumnInference {
-    columns_to_types: HashMap<String, CsvType>,
+    pub columns_to_types: HashMap<String, CsvType>,
 }
 impl Display for ColumnInference {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
@@ -46,7 +46,7 @@ impl ColumnInference {
     pub fn from_csv(csv: &CsvData) -> ColumnInference {
         let mut columns_to_types: HashMap<String, CsvType> = HashMap::new();
         for (i, header) in csv.headers.iter().enumerate() {
-            let t = get_type_of_column(&csv.records, i);
+            let t = get_type_of_column(&mut csv.records.iter(), i);
             columns_to_types.insert(String::from(header), t);
         }
         debug!(
@@ -56,8 +56,35 @@ impl ColumnInference {
         ColumnInference { columns_to_types }
     }
 
+    pub fn from_stream<R: std::io::Read>(csv: &mut CsvStream<R>) -> Result<ColumnInference, csv::Error> {
+        let mut columns_to_types: HashMap<String, CsvType> = HashMap::new();
+        let mut records = csv.stream.records();
+        for (i, header) in csv.headers.iter().enumerate() {
+            let t = get_type_of_column_stream(&mut records, i)?;
+            columns_to_types.insert(String::from(header), t);
+        }
+        debug!(
+            "Inferred columns for file {}: {:?} ",
+            csv.filename, columns_to_types
+        );
+        Ok(ColumnInference { columns_to_types })
+    }
+
+
     /// build column 'inference' with every column artificially inferred as a String
     pub fn default_inference(csv: &CsvData) -> ColumnInference {
+        let mut columns_to_types: HashMap<String, CsvType> = HashMap::new();
+        for header in csv.headers.iter() {
+            columns_to_types.insert(String::from(header), CsvType::String);
+        }
+        debug!(
+            "Using default column type of string for all columns in file {}: {:?} ",
+            csv.filename, columns_to_types
+        );
+        ColumnInference { columns_to_types }
+    }
+
+    pub fn default_inference_csv_stream<R: std::io::Read>(csv: &CsvStream<R>) -> ColumnInference {
         let mut columns_to_types: HashMap<String, CsvType> = HashMap::new();
         for header in csv.headers.iter() {
             columns_to_types.insert(String::from(header), CsvType::String);
@@ -84,9 +111,9 @@ fn parse(s: &str) -> CsvWrapper {
         .unwrap_or_else(|_| CsvWrapper::String(String::from(s)))
 }
 
-fn get_type_of_column(csv: &[StringRecord], index: usize) -> CsvType {
+fn get_type_of_column<'a, I: Iterator<Item = &'a StringRecord>>(csv: &mut I, index: usize) -> CsvType {
     let mut distinct_types = HashSet::new();
-    for record in csv.iter() {
+    for record in csv {
         let parsed_type = parse(record.get(index).unwrap()).get_type();
         distinct_types.insert(parsed_type);
     }
@@ -100,6 +127,26 @@ fn get_type_of_column(csv: &[StringRecord], index: usize) -> CsvType {
     } else {
         CsvType::String
     }
+}
+
+fn get_type_of_column_stream< I: Iterator<Item = csv::Result<StringRecord>>>(csv: &mut I, index: usize) -> csv::Result<CsvType> {
+    let mut distinct_types = HashSet::new();
+    for record in csv {
+        let record = record?;
+        let parsed_type = parse(record.get(index).unwrap()).get_type();
+        distinct_types.insert(parsed_type);
+    }
+    let found_type = if distinct_types.contains(&CsvType::String) {
+        CsvType::String
+    } else if distinct_types.contains(&CsvType::Integer) && distinct_types.contains(&CsvType::Float)
+    {
+        CsvType::Float
+    } else if distinct_types.len() == 1 {
+        distinct_types.iter().next().unwrap().to_owned()
+    } else {
+        CsvType::String
+    };
+    Ok(found_type)
 }
 #[cfg(test)]
 mod test {
