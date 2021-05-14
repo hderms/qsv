@@ -1,8 +1,9 @@
-use csv::{StringRecord, Trim};
+use csv::{Position, Reader, StringRecord, Trim};
 use log::debug;
 use std::error::Error;
 use std::fmt::{Display, Formatter};
 use std::fs::File;
+use std::io::{Read, Seek};
 
 #[derive(PartialEq, Debug)]
 pub enum CsvWrapper {
@@ -79,6 +80,43 @@ impl CsvData {
             filename: String::from(filename),
         })
     }
+}
+pub struct CsvStream<R: std::io::Read + std::io::Seek> {
+    pub headers: StringRecord,
+    pub filename: String,
+    pub stream: Reader<R>,
+}
+impl<R: std::io::Read + std::io::Seek> CsvStream<R> {
+    pub fn from_reader(
+        reader: R,
+        filename: &str,
+        delimiter: char,
+        trim: bool,
+    ) -> Result<CsvStream<R>, Box<dyn Error>> {
+        let trim = if trim { Trim::All } else { Trim::None };
+        let mut stream: Reader<R> = csv::ReaderBuilder::new()
+            .buffer_capacity(16 * (1 << 10))
+            .delimiter(delimiter as u8)
+            .trim(trim)
+            .from_reader(reader);
+
+        let headers = stream.headers()?;
+        let csv_stream: CsvStream<R> = CsvStream {
+            headers: headers.clone(),
+            filename: String::from(filename),
+            stream,
+        };
+        Ok(csv_stream)
+    }
+}
+
+///Resets a CSV stream by seeking to the first row after the headers
+pub fn reset_stream<A: Read + Seek>(csv_stream: &mut CsvStream<A>) -> Result<(), Box<dyn Error>> {
+    let mut beginning = Position::new();
+    beginning.set_line(1);
+    csv_stream.stream.seek(beginning)?;
+    csv_stream.stream.records().next();
+    Ok(())
 }
 
 #[cfg(test)]
