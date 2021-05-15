@@ -80,12 +80,12 @@ impl CsvData {
         })
     }
 }
-pub struct CsvStream<R: std::io::Read>{
+pub struct CsvStream<R: std::io::Read + std::io::Seek>{
     pub headers: StringRecord,
     pub filename: String,
     pub stream: Reader<R>
 }
-impl<R: std::io::Read> CsvStream<R> {
+impl<R: std::io::Read + std::io::Seek> CsvStream<R> {
 
     pub fn from_reader(
         reader: R,

@@ -10,7 +10,7 @@ use log::{debug, error};
 use std::collections::HashMap;
 use std::error::Error;
 use std::fs::File;
-use std::io::{Write, Read};
+use std::io::{Write, Read,  Seek};
 use std::path::Path;
 use uuid::Uuid;
 
@@ -93,15 +93,21 @@ pub fn execute_statistics(
 ) -> Result<ColumnInferences, Box<dyn Error>> {
     let mut hashmap: HashMap<String, ColumnInference> = HashMap::new();
     if let Ok((inference, ref mut csv_stream)) = maybe_load_stats(filename, options) {
-        // hashmap.insert(filename.clone(), inference);
         for (key, value) in inference.columns_to_types {
+            debug!("column {} value {}", key, value);
             match value {
                 CsvType::Integer => {
+                    csv_stream.stream.seek(0);
+                    let mut amount = 0;
                     for record in csv_stream.stream.records() {
                         let record = record?;
-                        record.
+                        let index = inference.columns_to_indexes.get(&key).unwrap();
+                        let parsed: usize = record.get(*index).unwrap().parse().unwrap();
+                        debug!("index {} value {}", index, parsed);
+                        amount += parsed;
 
                     }
+                    println!("total: {}", amount);
 
                 }
                 CsvType::Float => {}
@@ -143,7 +149,7 @@ fn maybe_load_analysis(
 fn maybe_load_stats(
     filename: &str,
     options: &Options,
-) -> Result<(ColumnInference, CsvStream<Box<dyn Read>>), Box<dyn Error>> {
+) -> Result<(ColumnInference, CsvStream<Box<dyn Read >>), Box<dyn Error>> {
     let path = Path::new(filename);
     if !path.exists() {
         return Err("failed to find path".into())
