@@ -13,6 +13,7 @@ use std::fs::File;
 use std::io::{Write, Read,  Seek};
 use std::path::Path;
 use uuid::Uuid;
+use csv::Position;
 
 pub struct Options {
     pub delimiter: char,
@@ -94,16 +95,17 @@ pub fn execute_statistics(
     let mut hashmap: HashMap<String, ColumnInference> = HashMap::new();
     if let Ok((inference, ref mut csv_stream)) = maybe_load_stats(filename, options) {
         for (key, value) in inference.columns_to_types {
-            debug!("column {} value {}", key, value);
             match value {
                 CsvType::Integer => {
-                    csv_stream.stream.seek(0);
+                    let mut beginning = Position::new();
+                    beginning.set_line(1);
+                    csv_stream.stream.seek(beginning.clone())?;
                     let mut amount = 0;
+                    csv_stream.stream.records().next();
                     for record in csv_stream.stream.records() {
                         let record = record?;
                         let index = inference.columns_to_indexes.get(&key).unwrap();
                         let parsed: usize = record.get(*index).unwrap().parse().unwrap();
-                        debug!("index {} value {}", index, parsed);
                         amount += parsed;
 
                     }
@@ -149,7 +151,7 @@ fn maybe_load_analysis(
 fn maybe_load_stats(
     filename: &str,
     options: &Options,
-) -> Result<(ColumnInference, CsvStream<Box<dyn Read >>), Box<dyn Error>> {
+) -> Result<(ColumnInference, CsvStream<File>), Box<dyn Error>> {
     let path = Path::new(filename);
     if !path.exists() {
         return Err("failed to find path".into())
@@ -231,18 +233,15 @@ fn csv_data_from_mime_type(
     }
 }
 
+trait ReadAndSeek: std::io::Read + std::io::Seek {}
 fn csv_stream_from_mime_type(
     filename: &str,
     mime_type: &str,
     options: &Options,
-) -> Result<CsvStream<Box<dyn Read>>, Box<dyn Error>> {
-    if mime_type == "application/gzip" {
+) -> Result<CsvStream<File>, Box<dyn Error>> {
+     if mime_type == "text/plain" {
         let reader = File::open(filename)?;
-        let d = GzDecoder::new(reader);
-        CsvStream::from_reader(Box::new(d), filename, options.delimiter, options.trim)
-    } else if mime_type == "text/plain" {
-        let reader = File::open(filename)?;
-        CsvStream::from_reader(Box::new(reader), filename, options.delimiter, options.trim)
+        CsvStream::from_reader(reader, filename, options.delimiter, options.trim)
     } else {
         let error_format = format!("Unsupported MIME type {} for file {}", mime_type, filename);
         error!("{}", error_format);
