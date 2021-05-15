@@ -10,10 +10,11 @@ use log::{debug, error};
 use std::collections::HashMap;
 use std::error::Error;
 use std::fs::File;
-use std::io::{Write, Read,  Seek};
+use std::io::Write;
 use std::path::Path;
 use uuid::Uuid;
 use csv::Position;
+use stats::{OnlineStats, Frequencies};
 
 pub struct Options {
     pub delimiter: char,
@@ -89,10 +90,9 @@ pub fn execute_analysis(
 
 ///Executes a query, possibly returning Rows
 pub fn execute_statistics(
-    filename: &String,
+    filename: &str,
     options: &Options,
-) -> Result<ColumnInferences, Box<dyn Error>> {
-    let mut hashmap: HashMap<String, ColumnInference> = HashMap::new();
+) -> Result<(), Box<dyn Error>> {
     if let Ok((inference, ref mut csv_stream)) = maybe_load_stats(filename, options) {
         for (key, value) in inference.columns_to_types {
             match value {
@@ -100,16 +100,20 @@ pub fn execute_statistics(
                     let mut beginning = Position::new();
                     beginning.set_line(1);
                     csv_stream.stream.seek(beginning.clone())?;
-                    let mut amount = 0;
+
+                    let mut stats = OnlineStats::new();
+                    let mut freqs = Frequencies::new();
                     csv_stream.stream.records().next();
                     for record in csv_stream.stream.records() {
                         let record = record?;
                         let index = inference.columns_to_indexes.get(&key).unwrap();
                         let parsed: usize = record.get(*index).unwrap().parse().unwrap();
-                        amount += parsed;
+                        stats.add(parsed);
+                        freqs.add(parsed);
 
                     }
-                    println!("total: {}", amount);
+                    println!("avg: {}, stddev: {}", stats.mean(), stats.stddev());
+                    println!("top 10: {:?}, cardinality: {}", freqs.most_frequent().iter().take(5), freqs.cardinality());
 
                 }
                 CsvType::Float => {}
@@ -127,8 +131,9 @@ pub fn execute_statistics(
             filename
         );
     }
-    Ok(ColumnInferences::new(hashmap))
+    Ok(())
 }
+
 
 fn maybe_load_analysis(
     filename: &str,
@@ -239,7 +244,7 @@ fn csv_stream_from_mime_type(
     mime_type: &str,
     options: &Options,
 ) -> Result<CsvStream<File>, Box<dyn Error>> {
-     if mime_type == "text/plain" {
+    if mime_type == "text/plain" {
         let reader = File::open(filename)?;
         CsvStream::from_reader(reader, filename, options.delimiter, options.trim)
     } else {
@@ -253,11 +258,7 @@ fn remove_extension(p0: &Path) -> Option<String> {
     let file_name = p0.file_name()?;
     let file_str = file_name.to_str()?;
     let mut split = file_str.split('.');
-    if let Some(str) = split.next() {
-        Some(String::from(str))
-    } else {
-        None
-    }
+    split.next().map(String::from)
 }
 
 ///Writes a set of rows to STDOUT
@@ -280,8 +281,5 @@ pub fn write_to_stdout_with_header(results: Rows, header: &[String]) -> Result<(
 }
 
 fn sanitize(str: Option<String>) -> Option<String> {
-    match str {
-        Some(s) => Some(s.replace(" ", "_")),
-        None => None,
-    }
+    str.map(|s| s.replace(" ", "_"))
 }
