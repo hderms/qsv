@@ -1,4 +1,4 @@
-use csv::{StringRecord, Trim, Reader};
+use csv::{Reader, StringRecord, Trim};
 use log::debug;
 use std::error::Error;
 use std::fmt::{Display, Formatter};
@@ -80,13 +80,12 @@ impl CsvData {
         })
     }
 }
-pub struct CsvStream<R: std::io::Read + std::io::Seek>{
+pub struct CsvStream<R: std::io::Read + std::io::Seek> {
     pub headers: StringRecord,
     pub filename: String,
-    pub stream: Reader<R>
+    pub stream: Reader<R>,
 }
 impl<R: std::io::Read + std::io::Seek> CsvStream<R> {
-
     pub fn from_reader(
         reader: R,
         filename: &str,
@@ -100,16 +99,14 @@ impl<R: std::io::Read + std::io::Seek> CsvStream<R> {
             .trim(trim)
             .from_reader(reader);
 
-
         let headers = stream.headers()?;
         let csv_stream: CsvStream<R> = CsvStream {
             headers: headers.clone(),
             filename: String::from(filename),
-            stream
+            stream,
         };
         Ok(csv_stream)
     }
-
 }
 
 #[cfg(test)]

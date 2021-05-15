@@ -4,7 +4,10 @@ use std::path::Path;
 use clap::{AppSettings, Clap};
 use simple_logger::SimpleLogger;
 
-use crate::qsv::{execute_analysis, execute_query, write_to_stdout, write_to_stdout_with_header, Options, execute_statistics};
+use crate::qsv::{
+    execute_analysis, execute_query, execute_statistics, write_to_stdout,
+    write_to_stdout_with_header, Options,
+};
 
 mod csv;
 mod db;
@@ -26,9 +29,8 @@ enum SubCommand {
     Query(Query),
     Analyze(Analyze),
     FileType(FileType),
-    Stat(Stat)
+    Stat(Stat),
 }
-
 
 #[derive(Clap)]
 struct Query {
@@ -99,13 +101,12 @@ fn main() -> Result<(), Box<dyn Error>> {
         }
         SubCommand::Stat(subcmd) => {
             let filename = subcmd.filename;
-            let options = Options{
+            let options = Options {
                 delimiter: ',',
                 trim: false,
-                textonly: false
+                textonly: false,
             };
             execute_statistics(&filename, &options)?;
-
         }
     }
     Ok(())
