@@ -1,4 +1,4 @@
-use csv::{Reader, StringRecord, Trim};
+use csv::{Reader, StringRecord, Trim, Position};
 use log::debug;
 use std::error::Error;
 use std::fmt::{Display, Formatter};
@@ -147,4 +147,12 @@ mod tests {
             )
         )
     }
+}
+pub fn reset_stream(csv_stream: &mut CsvStream<File>) -> Result<(), Box<dyn Error>> {
+    let mut beginning = Position::new();
+    beginning.set_line(1);
+    csv_stream.stream.seek(beginning.clone())?;
+    csv_stream.stream.records().next();
+    Ok(())
+
 }

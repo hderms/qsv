@@ -1,9 +1,10 @@
-use crate::csv::csv_data::{CsvData, CsvStream, CsvType, CsvWrapper};
+use crate::csv::csv_data::{CsvData, CsvStream, CsvType, CsvWrapper, reset_stream};
 use csv::StringRecord;
 use log::debug;
 use std::collections::{HashMap, HashSet};
 use std::fmt::{Display, Formatter};
 use std::num::{ParseFloatError, ParseIntError};
+use std::fs::File;
 
 /// a record of the inferred types for columns in a CSV
 #[derive(Debug)]
@@ -62,13 +63,15 @@ impl ColumnInference {
         }
     }
 
-    pub fn from_stream<R: std::io::Read + std::io::Seek>(
-        csv: &mut CsvStream<R>,
+    pub fn from_stream(
+        csv: &mut CsvStream<File>,
     ) -> Result<ColumnInference, csv::Error> {
-        let mut columns_to_types: HashMap<String, CsvType> = HashMap::new();
-        let mut records = csv.stream.records();
-        let mut columns_to_indexes: HashMap<String, usize> = HashMap::new();
-        for (i, header) in csv.headers.iter().enumerate() {
+        let mut columns_to_types: HashMap<String, CsvType> = HashMap::with_capacity(5);
+        let mut columns_to_indexes: HashMap<String, usize> = HashMap::with_capacity(5);
+        let headers: Vec<String> = csv.headers.iter().map(|s| String::from(s)).collect();
+        for (i, header) in headers.iter().enumerate() {
+            reset_stream(  csv).unwrap();
+            let mut records = csv.stream.records();
             let t = get_type_of_column_stream(&mut records, i)?;
             columns_to_types.insert(String::from(header), t);
             columns_to_indexes.insert(String::from(header), i);
@@ -160,22 +163,32 @@ fn get_type_of_column_stream<I: Iterator<Item = csv::Result<StringRecord>>>(
     csv: &mut I,
     index: usize,
 ) -> csv::Result<CsvType> {
-    let mut distinct_types = HashSet::new();
+    let mut distinct_types = HashSet::with_capacity(8);
     for record in csv {
         let record = record?;
         let parsed_type = parse(record.get(index).unwrap()).get_type();
         distinct_types.insert(parsed_type);
+
+         if distinct_types.contains(&CsvType::String) {
+            return Ok(CsvType::String)
+        }
     }
+
     let found_type = if distinct_types.contains(&CsvType::String) {
+        debug!("Distinct types contains String");
         CsvType::String
     } else if distinct_types.contains(&CsvType::Integer) && distinct_types.contains(&CsvType::Float)
     {
+        debug!("Distinct types contains Integer and Float");
         CsvType::Float
     } else if distinct_types.len() == 1 {
+        debug!("Distinct types contains single value");
         distinct_types.iter().next().unwrap().to_owned()
     } else {
+        debug!("all else");
         CsvType::String
     };
+    debug!("distinct types {:?} for index {}", distinct_types, index);
     Ok(found_type)
 }
 #[cfg(test)]

@@ -626,6 +626,7 @@ dependencies = [
  "format-sql-query",
  "log",
  "md5",
+ "num-traits",
  "predicates",
  "rusqlite",
  "simple_logger",

@@ -8,6 +8,7 @@ use crate::qsv::{
     execute_analysis, execute_query, execute_statistics, write_to_stdout,
     write_to_stdout_with_header, Options,
 };
+use std::io::Write;
 
 mod csv;
 mod db;
@@ -106,7 +107,15 @@ fn main() -> Result<(), Box<dyn Error>> {
                 trim: false,
                 textonly: false,
             };
-            execute_statistics(&filename, &options)?;
+            let stats = execute_statistics(&filename, &options)?;
+            let stdout = std::io::stdout();
+            let lock = stdout.lock();
+            let mut buf = std::io::BufWriter::new(lock);
+            buf.write_all(format!("File: {}\n", filename).as_bytes())?;
+            for stat in stats {
+                buf.write_all(stat.to_string().as_bytes())?
+
+            }
         }
     }
     Ok(())
