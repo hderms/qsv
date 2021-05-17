@@ -71,7 +71,9 @@ fn print_frequencies(top_10: &[String], f: &mut Formatter) -> std::fmt::Result {
     Ok(())
 }
 
-///Executes a query, possibly returning Rows
+///Calculates some statistics from the CSV
+/// Depending on what type the column has, we can calculate different values such as:
+/// mean, stddev, count unique, top 10 most frequent values
 pub fn execute_statistics(
     filename: &str,
     options: &Options,
@@ -159,11 +161,14 @@ fn format_top_10<T: Eq + Hash + Display>(freqs: Frequencies<T>) -> Vec<String> {
         .collect()
 }
 
+///This allows us to parse a given type from a string value'd CSV cell
+///provided we know what type that cell should be
+///we do this for every cell in the column, calling the closure `process`  on it
 fn compute_statistics_closure<Parse: FromStr, F>(
     csv_stream: &mut CsvStream<File>,
     inference: &ColumnInference,
     key: &str,
-    mut f: F,
+    mut process: F,
 ) -> Result<(), Box<dyn Error>>
 where
     F: FnMut(Parse),
@@ -180,7 +185,7 @@ where
                 error
             })
             .unwrap();
-        f(try_parse);
+        process(try_parse);
     }
     Ok(())
 }

@@ -1,5 +1,5 @@
 use rusqlite::functions::{Aggregate, Context, FunctionFlags};
-use rusqlite::{Result, Connection};
+use rusqlite::{Connection, Result};
 use stats::OnlineStats;
 
 pub(crate) fn add_udfs(connection: &Connection) -> Result<()> {
@@ -13,9 +13,7 @@ pub(crate) fn add_udfs(connection: &Connection) -> Result<()> {
         "sqrt",
         1,
         FunctionFlags::SQLITE_DETERMINISTIC,
-        move |ctx| {
-            calculate_sqrt(ctx).map_err(|e| rusqlite::Error::UserFunctionError(e.into()))
-        },
+        move |ctx| calculate_sqrt(ctx).map_err(|e| rusqlite::Error::UserFunctionError(e.into())),
     )?;
     connection.create_aggregate_function(
         "stddev",
@@ -60,4 +58,3 @@ impl Aggregate<OnlineStats, Option<f64>> for Stddev {
         Ok(stddev)
     }
 }
-
