@@ -2,7 +2,7 @@ use crate::csv::csv_data::{CsvStream, CsvType, reset_stream};
 use crate::csv::inference::ColumnInference;
 use crate::qsv::{csv_stream_from_mime_type, Options};
 use log::debug;
-use stats::{OnlineStats, Frequencies};
+use stats::{OnlineStats, Frequencies, MinMax};
 use std::error::Error;
 use std::fs::File;
 use std::path::Path;
@@ -10,40 +10,61 @@ use std::str::FromStr;
 use std::fmt::{Display, Formatter};
 use std::hash::Hash;
 
-pub enum Statistics{
-    StatsAndFrequencies{ column: String, stats: OnlineStats,   top_10: Vec<String>},
-    Stats{column: String,  stats: OnlineStats},
-    Frequencies{ column: String, top_10: Vec<String>},
+#[derive(Copy, Clone)]
+ enum MinValue{
+    Float(f64),
+    Int(i64),
+}
+impl Display for MinValue {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            MinValue::Float(v) => {
+                write!(f, "{:.5}", v)
+
+            }
+            MinValue::Int(v) => {
+                write!(f, "{}", v)
+            }
+        }
+
+    }
+}
+
+pub struct Statistics{
+    pub column: String, stats: Option<OnlineStats>,   top_10: Option<Vec<String>>, min: Option<MinValue>, max: Option<MinValue>
 }
 impl Display for Statistics {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Statistics::StatsAndFrequencies { column, stats, top_10 } => {
-                writeln!(f, "Column: {}", column)?;
-                writeln!(f, "Mean: {}, stddev: {}", stats.mean(), stats.stddev())?;
-                writeln!(f, "Top ten most common occurrences:")?;
-                for ten in top_10 {
-                    writeln!(f, "\t{}", ten)?
-                }
-
-            }
-            Statistics::Stats{column, stats} => {
-                writeln!(f, "Column: {}", column)?;
-                writeln!(f, "Mean: {}, stddev: {}", stats.mean(), stats.stddev())?
-            }
-            Statistics::Frequencies { column, top_10 } => {
-                writeln!(f, "Column: {}", column)?;
-                writeln!(f, "Top ten most common occurrences:")?;
-                for ten in top_10 {
-                    writeln!(f, "\t{}", ten)?
-                }
-            }
+        if let Some(ref stats) = self.stats {
+            print_statistics(stats, f)?;
+        }
+        if let Some(min) = self.min {
+            writeln!(f, "\tMin: {}", min)?;
+        }
+        if let Some(max) = self.max {
+            writeln!(f, "\tMax: {}", max)?;
+        }
+        if let Some(ref top_10) = self.top_10 {
+            print_frequencies(top_10, f)?;
         }
         Ok(())
 
     }
 }
 
+fn print_statistics(stats: & OnlineStats, f: &mut Formatter) -> std::fmt::Result {
+    writeln!(f, "\tMean: {:.5}", stats.mean())?;
+    writeln!(f, "\tStdev: {:.5}",  stats.stddev())
+}
+
+
+fn print_frequencies(top_10: &Vec<String>, f: &mut Formatter) -> std::fmt::Result {
+    writeln!(f, "\tTop ten most common occurrences:")?;
+    for ten in top_10 {
+        writeln!(f, "\t{}", ten)?
+    }
+    Ok(())
+}
 
 ///Executes a query, possibly returning Rows
 pub fn execute_statistics(filename: &str, options: &Options) -> Result<Vec<Statistics>, Box<dyn Error>> {
@@ -55,20 +76,29 @@ pub fn execute_statistics(filename: &str, options: &Options) -> Result<Vec<Stati
                 CsvType::Integer => {
                     let mut stats = OnlineStats::new();
                     let mut freqs = Frequencies::new();
+                    let mut minmax = MinMax::new();
                     compute_statistics_closure(csv_stream, &inference, key, |element: i64| {
                         stats.add(element);
                         freqs.add(element);
+                        minmax.add(element);
                     })?;
-                    let result = Statistics::StatsAndFrequencies{column: key.clone(), stats, top_10: format_top_10(freqs) };
+                    let min = minmax.min().map(|inner| MinValue::Int(inner.clone()));
+                    let max = minmax.max().map(|inner| MinValue::Int(inner.clone()));
+
+                    let result = Statistics{column: key.clone(), stats: Some(stats), top_10: Some(format_top_10(freqs)), min, max };
                     vec.push(result)
                 }
                 CsvType::Float => {
                     let mut stats = OnlineStats::new();
+                    let mut minmax = MinMax::new();
                     compute_statistics_closure(csv_stream, &inference, key, |element: f64| {
                         stats.add(element);
+                        minmax.add(element);
                     })?;
 
-                    let result = Statistics::Stats{column: key.clone(), stats};
+                    let min = minmax.min().map(|inner| MinValue::Float(inner.clone()));
+                    let max = minmax.max().map(|inner| MinValue::Float(inner.clone()));
+                    let result = Statistics{column: key.clone(), stats: Some(stats), top_10: None, min, max};
                     vec.push(result)
                 }
 
@@ -77,7 +107,7 @@ pub fn execute_statistics(filename: &str, options: &Options) -> Result<Vec<Stati
                     compute_statistics_closure(csv_stream, &inference, key, |element: String| {
                         freqs.add(element);
                     })?;
-                    let result = Statistics::Frequencies{ column: key.clone(), top_10: format_top_10(freqs)};
+                    let result = Statistics{ column: key.clone(), top_10: Some(format_top_10(freqs)), stats: None, min: None, max: None};
                     vec.push(result)
                 }
             }
@@ -132,6 +162,5 @@ fn maybe_load_stats(
     } else {
         ColumnInference::from_stream(&mut csv)?
     };
-    println!("{}", inference);
     Ok((inference, csv))
 }

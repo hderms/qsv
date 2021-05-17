@@ -114,13 +114,9 @@ fn main() -> Result<(), Box<dyn Error>> {
                 textonly: subcmd.textonly,
             };
             let stats = execute_statistics(&filename, &options)?;
-            let stdout = std::io::stdout();
-            let lock = stdout.lock();
-            let mut buf = std::io::BufWriter::new(lock);
-            buf.write_all(format!("File: {}\n", filename).as_bytes())?;
-            for stat in stats {
-                buf.write_all(stat.to_string().as_bytes())?
-
+            for (i, stat) in stats.iter().enumerate() {
+                println!("{}. '{}'", i, stat.column);
+                println!("{}",  stat);
             }
         }
     }
