@@ -60,7 +60,7 @@ impl Display for Statistics {
 
 fn print_statistics(stats: &OnlineStats, f: &mut Formatter) -> std::fmt::Result {
     writeln!(f, "\tMean: {:.5}", stats.mean())?;
-    writeln!(f, "\tStdev: {:.5}", stats.stddev())
+    writeln!(f, "\tStddev: {:.5}", stats.stddev())
 }
 
 fn print_frequencies(top_10: &[String], f: &mut Formatter) -> std::fmt::Result {
