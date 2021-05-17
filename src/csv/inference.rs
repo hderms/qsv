@@ -1,11 +1,11 @@
 use crate::csv::csv_data::{reset_stream, CsvData, CsvStream, CsvType, CsvWrapper};
 use csv::StringRecord;
+use indexmap::map::IndexMap;
 use log::debug;
 use std::collections::{HashMap, HashSet};
 use std::fmt::{Display, Formatter};
 use std::io::{Read, Seek};
 use std::num::{ParseFloatError, ParseIntError};
-use indexmap::map::IndexMap;
 
 /// a record of the inferred types for columns in a CSV
 #[derive(Debug)]

@@ -29,7 +29,7 @@ enum SubCommand {
     Query(Query),
     Analyze(Analyze),
     FileType(FileType),
-    Stat(Stat),
+    Stats(Stats),
 }
 
 #[derive(Clap)]
@@ -59,7 +59,7 @@ struct FileType {
 }
 
 #[derive(Clap)]
-struct Stat {
+struct Stats {
     filename: String,
     #[clap(short, long, default_value = ",")]
     delimiter: char,
@@ -105,7 +105,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             let t = tree_magic::from_filepath(path);
             println!("{}", t);
         }
-        SubCommand::Stat(subcmd) => {
+        SubCommand::Stats(subcmd) => {
             let filename = subcmd.filename;
             let options = Options {
                 delimiter: subcmd.delimiter,

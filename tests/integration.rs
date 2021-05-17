@@ -288,14 +288,15 @@ mod stats_subcommand {
 
     fn build_cmd() -> Command {
         let mut cmd = Command::cargo_bin("qsv").unwrap();
-        cmd.arg("stat");
+        cmd.arg("stats");
         cmd
     }
     #[test]
     fn it_can_run_the_commandline_for_a_simple_query() -> Result<(), Box<dyn std::error::Error>> {
         let mut cmd = build_cmd();
         cmd.arg("testdata/statistical.csv");
-        cmd.assert().success()
+        cmd.assert()
+            .success()
             .stdout(contains("Mean: 3.50000"))
             .stdout(contains("Stddev: 1.707"))
             .stdout(contains("Min: 1"))
@@ -315,5 +316,4 @@ mod stats_subcommand {
             .stderr(contains("<filename>"));
         Ok(())
     }
-
 }
