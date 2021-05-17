@@ -5,12 +5,13 @@ use std::collections::{HashMap, HashSet};
 use std::fmt::{Display, Formatter};
 use std::io::{Read, Seek};
 use std::num::{ParseFloatError, ParseIntError};
+use indexmap::map::IndexMap;
 
 /// a record of the inferred types for columns in a CSV
 #[derive(Debug)]
 pub struct ColumnInference {
-    pub columns_to_types: HashMap<String, CsvType>,
-    pub columns_to_indexes: HashMap<String, usize>,
+    pub columns_to_types: IndexMap<String, CsvType>,
+    pub columns_to_indexes: IndexMap<String, usize>,
 }
 impl Display for ColumnInference {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
@@ -46,8 +47,8 @@ impl Display for ColumnInferences {
 impl ColumnInference {
     /// build inference from a CSV
     pub fn from_csv(csv: &CsvData) -> ColumnInference {
-        let mut columns_to_types: HashMap<String, CsvType> = HashMap::with_capacity(8);
-        let mut columns_to_indexes: HashMap<String, usize> = HashMap::with_capacity(8);
+        let mut columns_to_types = IndexMap::with_capacity(8);
+        let mut columns_to_indexes = IndexMap::with_capacity(8);
         for (i, header) in csv.headers.iter().enumerate() {
             let t = get_type_of_column(&mut csv.records.iter(), i);
             columns_to_types.insert(String::from(header), t);
@@ -66,8 +67,8 @@ impl ColumnInference {
     pub fn from_stream<A: Read + Seek>(
         csv: &mut CsvStream<A>,
     ) -> Result<ColumnInference, csv::Error> {
-        let mut columns_to_types: HashMap<String, CsvType> = HashMap::with_capacity(8);
-        let mut columns_to_indexes: HashMap<String, usize> = HashMap::with_capacity(8);
+        let mut columns_to_types = IndexMap::with_capacity(8);
+        let mut columns_to_indexes = IndexMap::with_capacity(8);
         let headers: Vec<String> = csv.headers.iter().map(String::from).collect();
         for (i, header) in headers.iter().enumerate() {
             reset_stream(csv).unwrap();
@@ -88,8 +89,8 @@ impl ColumnInference {
 
     /// build column 'inference' with every column artificially inferred as a String
     pub fn default_inference(headers: &StringRecord) -> ColumnInference {
-        let mut columns_to_types: HashMap<String, CsvType> = HashMap::new();
-        let mut columns_to_indexes: HashMap<String, usize> = HashMap::new();
+        let mut columns_to_types = IndexMap::with_capacity(8);
+        let mut columns_to_indexes = IndexMap::with_capacity(8);
         for (i, header) in headers.iter().enumerate() {
             columns_to_types.insert(String::from(header), CsvType::String);
             columns_to_indexes.insert(String::from(header), i);
