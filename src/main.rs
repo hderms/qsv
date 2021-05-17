@@ -115,7 +115,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             let stats = execute_statistics(&filename, &options)?;
             for (i, stat) in stats.iter().enumerate() {
                 println!("{}. '{}'", i, stat.column);
-                println!("{}",  stat);
+                println!("{}", stat);
             }
         }
     }

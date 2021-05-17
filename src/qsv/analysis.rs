@@ -48,7 +48,7 @@ fn maybe_load_analysis(
     let mime_type = tree_magic::from_filepath(path);
     let csv = csv_data_from_mime_type(filename, mime_type.as_str(), options)?;
     let inference = if options.textonly {
-        ColumnInference::default_inference(&csv)
+        ColumnInference::default_inference(&csv.headers)
     } else {
         ColumnInference::from_csv(&csv)
     };

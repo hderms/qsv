@@ -74,7 +74,7 @@ fn maybe_load_file(
     let table_name = sanitize(without_extension)
         .unwrap_or_else(|| String::from("t") + &Uuid::new_v4().as_u128().to_string());
     let inference = if options.textonly {
-        ColumnInference::default_inference(&csv)
+        ColumnInference::default_inference(&csv.headers)
     } else {
         ColumnInference::from_csv(&csv)
     };
