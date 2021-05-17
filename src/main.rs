@@ -8,7 +8,6 @@ use crate::qsv::{
     execute_analysis, execute_query, execute_statistics, write_to_stdout,
     write_to_stdout_with_header, Options,
 };
-use std::io::Write;
 
 mod csv;
 mod db;

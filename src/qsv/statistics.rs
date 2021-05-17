@@ -31,7 +31,8 @@ impl Display for MinValue {
 }
 
 pub struct Statistics{
-    pub column: String, stats: Option<OnlineStats>,   top_10: Option<Vec<String>>, min: Option<MinValue>, max: Option<MinValue>
+    pub column: String, stats: Option<OnlineStats>,   top_10: Option<Vec<String>>, min: Option<MinValue>, max: Option<MinValue>,
+    cardinality: Option<u64>
 }
 impl Display for Statistics {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
@@ -44,9 +45,13 @@ impl Display for Statistics {
         if let Some(max) = self.max {
             writeln!(f, "\tMax: {}", max)?;
         }
+        if let Some(ref cardinality) = self.cardinality {
+            writeln!(f, "\tUnique: {}", cardinality)?;
+        }
         if let Some(ref top_10) = self.top_10 {
             print_frequencies(top_10, f)?;
         }
+
         Ok(())
 
     }
@@ -84,8 +89,9 @@ pub fn execute_statistics(filename: &str, options: &Options) -> Result<Vec<Stati
                     })?;
                     let min = minmax.min().map(|inner| MinValue::Int(inner.clone()));
                     let max = minmax.max().map(|inner| MinValue::Int(inner.clone()));
+                    let cardinality = Some(freqs.cardinality());
 
-                    let result = Statistics{column: key.clone(), stats: Some(stats), top_10: Some(format_top_10(freqs)), min, max };
+                    let result = Statistics{column: key.clone(), stats: Some(stats), top_10: Some(format_top_10(freqs)), min, max, cardinality };
                     vec.push(result)
                 }
                 CsvType::Float => {
@@ -98,7 +104,7 @@ pub fn execute_statistics(filename: &str, options: &Options) -> Result<Vec<Stati
 
                     let min = minmax.min().map(|inner| MinValue::Float(inner.clone()));
                     let max = minmax.max().map(|inner| MinValue::Float(inner.clone()));
-                    let result = Statistics{column: key.clone(), stats: Some(stats), top_10: None, min, max};
+                    let result = Statistics{column: key.clone(), stats: Some(stats), top_10: None, min, max, cardinality: None};
                     vec.push(result)
                 }
 
@@ -107,7 +113,8 @@ pub fn execute_statistics(filename: &str, options: &Options) -> Result<Vec<Stati
                     compute_statistics_closure(csv_stream, &inference, key, |element: String| {
                         freqs.add(element);
                     })?;
-                    let result = Statistics{ column: key.clone(), top_10: Some(format_top_10(freqs)), stats: None, min: None, max: None};
+                    let cardinality = Some(freqs.cardinality());
+                    let result = Statistics{ column: key.clone(), top_10: Some(format_top_10(freqs)), stats: None, min: None, max: None, cardinality};
                     vec.push(result)
                 }
             }
