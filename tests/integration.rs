@@ -213,6 +213,8 @@ mod analyze_subcommand {
     use std::process::Command;
 
     use assert_cmd::prelude::*;
+    use predicates::str::contains;
+
     fn build_cmd() -> Command {
         let mut cmd = Command::cargo_bin("qsv").unwrap();
         cmd.arg("analyze");
@@ -231,10 +233,10 @@ mod analyze_subcommand {
         let mut cmd = build_cmd();
         cmd.assert()
             .failure()
-            .stderr(predicates::str::contains(
+            .stderr(contains(
                 "The following required arguments were not provided",
             ))
-            .stderr(predicates::str::contains("<query>"));
+            .stderr(contains("<query>"));
         Ok(())
     }
 
@@ -244,9 +246,9 @@ mod analyze_subcommand {
         cmd.arg("select * from (select * from (select*from ./testdata/occupations.csv))");
         cmd.assert()
             .success()
-            .stdout(predicates::str::contains("./testdata/occupations.csv:"))
-            .stdout(predicates::str::contains("minimum_age -> integer"))
-            .stdout(predicates::str::contains("occupation -> text"));
+            .stdout(contains("./testdata/occupations.csv:"))
+            .stdout(contains("minimum_age -> integer"))
+            .stdout(contains("occupation -> text"));
         Ok(())
     }
 
@@ -267,13 +269,51 @@ mod analyze_subcommand {
         cmd.arg("select age from ./testdata/people.csv union select minimum_age as age from ./testdata/occupations.csv");
         cmd.assert()
             .success()
-            .stdout(predicates::str::contains("./testdata/occupations.csv:"))
-            .stdout(predicates::str::contains("minimum_age -> integer"))
-            .stdout(predicates::str::contains("occupation -> text"))
-            .stdout(predicates::str::contains("./testdata/people.csv:"))
-            .stdout(predicates::str::contains("name -> text"))
-            .stdout(predicates::str::contains("age -> integer"));
+            .stdout(contains("./testdata/occupations.csv:"))
+            .stdout(contains("minimum_age -> integer"))
+            .stdout(contains("occupation -> text"))
+            .stdout(contains("./testdata/people.csv:"))
+            .stdout(contains("name -> text"))
+            .stdout(contains("age -> integer"));
 
+        Ok(())
+    }
+}
+
+mod stats_subcommand {
+    use std::process::Command;
+
+    use assert_cmd::prelude::*;
+    use predicates::str::contains;
+
+    fn build_cmd() -> Command {
+        let mut cmd = Command::cargo_bin("qsv").unwrap();
+        cmd.arg("stats");
+        cmd
+    }
+    #[test]
+    fn it_can_run_the_commandline_for_a_simple_query() -> Result<(), Box<dyn std::error::Error>> {
+        let mut cmd = build_cmd();
+        cmd.arg("testdata/statistical.csv");
+        cmd.assert()
+            .success()
+            .stdout(contains("Mean: 3.50000"))
+            .stdout(contains("Stddev: 1.707"))
+            .stdout(contains("Min: 1"))
+            .stdout(contains("Max: 6"))
+            .stdout(contains("Unique: 6"));
+        Ok(())
+    }
+
+    #[test]
+    fn it_errors_if_no_query_is_passed() -> Result<(), Box<dyn std::error::Error>> {
+        let mut cmd = build_cmd();
+        cmd.assert()
+            .failure()
+            .stderr(contains(
+                "The following required arguments were not provided",
+            ))
+            .stderr(contains("<filename>"));
         Ok(())
     }
 }

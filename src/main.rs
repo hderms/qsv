@@ -5,7 +5,8 @@ use clap::{AppSettings, Clap};
 use simple_logger::SimpleLogger;
 
 use crate::qsv::{
-    execute_analysis, execute_query, write_to_stdout, write_to_stdout_with_header, Options,
+    execute_analysis, execute_query, execute_statistics, write_to_stdout,
+    write_to_stdout_with_header, Options,
 };
 
 mod csv;
@@ -28,6 +29,7 @@ enum SubCommand {
     Query(Query),
     Analyze(Analyze),
     FileType(FileType),
+    Stats(Stats),
 }
 
 #[derive(Clap)]
@@ -54,6 +56,17 @@ struct Analyze {
 #[derive(Clap)]
 struct FileType {
     filename: String,
+}
+
+#[derive(Clap)]
+struct Stats {
+    filename: String,
+    #[clap(short, long, default_value = ",")]
+    delimiter: char,
+    #[clap(long)]
+    trim: bool,
+    #[clap(long)]
+    textonly: bool,
 }
 fn main() -> Result<(), Box<dyn Error>> {
     SimpleLogger::from_env().init()?;
@@ -91,6 +104,19 @@ fn main() -> Result<(), Box<dyn Error>> {
             let path = Path::new(ft.filename.as_str());
             let t = tree_magic::from_filepath(path);
             println!("{}", t);
+        }
+        SubCommand::Stats(subcmd) => {
+            let filename = subcmd.filename;
+            let options = Options {
+                delimiter: subcmd.delimiter,
+                trim: subcmd.trim,
+                textonly: subcmd.textonly,
+            };
+            let stats = execute_statistics(&filename, &options)?;
+            for (i, stat) in stats.iter().enumerate() {
+                println!("{}. '{}'", i, stat.column);
+                println!("{}", stat);
+            }
         }
     }
     Ok(())

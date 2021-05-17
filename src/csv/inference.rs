@@ -1,14 +1,17 @@
-use crate::csv::csv_data::{CsvData, CsvType, CsvWrapper};
+use crate::csv::csv_data::{reset_stream, CsvData, CsvStream, CsvType, CsvWrapper};
 use csv::StringRecord;
+use indexmap::map::IndexMap;
 use log::debug;
 use std::collections::{HashMap, HashSet};
 use std::fmt::{Display, Formatter};
+use std::io::{Read, Seek};
 use std::num::{ParseFloatError, ParseIntError};
 
 /// a record of the inferred types for columns in a CSV
 #[derive(Debug)]
 pub struct ColumnInference {
-    columns_to_types: HashMap<String, CsvType>,
+    pub columns_to_types: IndexMap<String, CsvType>,
+    pub columns_to_indexes: IndexMap<String, usize>,
 }
 impl Display for ColumnInference {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
@@ -44,29 +47,58 @@ impl Display for ColumnInferences {
 impl ColumnInference {
     /// build inference from a CSV
     pub fn from_csv(csv: &CsvData) -> ColumnInference {
-        let mut columns_to_types: HashMap<String, CsvType> = HashMap::new();
+        let mut columns_to_types = IndexMap::with_capacity(8);
+        let mut columns_to_indexes = IndexMap::with_capacity(8);
         for (i, header) in csv.headers.iter().enumerate() {
-            let t = get_type_of_column(&csv.records, i);
+            let t = get_type_of_column(&mut csv.records.iter(), i);
             columns_to_types.insert(String::from(header), t);
+            columns_to_indexes.insert(String::from(header), i);
         }
         debug!(
             "Inferred columns for file {}: {:?} ",
             csv.filename, columns_to_types
         );
-        ColumnInference { columns_to_types }
+        ColumnInference {
+            columns_to_types,
+            columns_to_indexes,
+        }
+    }
+
+    pub fn from_stream<A: Read + Seek>(
+        csv: &mut CsvStream<A>,
+    ) -> Result<ColumnInference, csv::Error> {
+        let mut columns_to_types = IndexMap::with_capacity(8);
+        let mut columns_to_indexes = IndexMap::with_capacity(8);
+        let headers: Vec<String> = csv.headers.iter().map(String::from).collect();
+        for (i, header) in headers.iter().enumerate() {
+            reset_stream(csv).unwrap();
+            let mut records = csv.stream.records();
+            let t = get_type_of_column_stream(&mut records, i)?;
+            columns_to_types.insert(String::from(header), t);
+            columns_to_indexes.insert(String::from(header), i);
+        }
+        debug!(
+            "Inferred columns for file {}: {:?} ",
+            csv.filename, columns_to_types
+        );
+        Ok(ColumnInference {
+            columns_to_types,
+            columns_to_indexes,
+        })
     }
 
     /// build column 'inference' with every column artificially inferred as a String
-    pub fn default_inference(csv: &CsvData) -> ColumnInference {
-        let mut columns_to_types: HashMap<String, CsvType> = HashMap::new();
-        for header in csv.headers.iter() {
+    pub fn default_inference(headers: &StringRecord) -> ColumnInference {
+        let mut columns_to_types = IndexMap::with_capacity(8);
+        let mut columns_to_indexes = IndexMap::with_capacity(8);
+        for (i, header) in headers.iter().enumerate() {
             columns_to_types.insert(String::from(header), CsvType::String);
+            columns_to_indexes.insert(String::from(header), i);
         }
-        debug!(
-            "Using default column type of string for all columns in file {}: {:?} ",
-            csv.filename, columns_to_types
-        );
-        ColumnInference { columns_to_types }
+        ColumnInference {
+            columns_to_types,
+            columns_to_indexes,
+        }
     }
 
     /// get the type of a column, referenced by its string name
@@ -84,9 +116,12 @@ fn parse(s: &str) -> CsvWrapper {
         .unwrap_or_else(|_| CsvWrapper::String(String::from(s)))
 }
 
-fn get_type_of_column(csv: &[StringRecord], index: usize) -> CsvType {
+fn get_type_of_column<'a, I: Iterator<Item = &'a StringRecord>>(
+    csv: &mut I,
+    index: usize,
+) -> CsvType {
     let mut distinct_types = HashSet::new();
-    for record in csv.iter() {
+    for record in csv {
         let parsed_type = parse(record.get(index).unwrap()).get_type();
         distinct_types.insert(parsed_type);
     }
@@ -100,6 +135,39 @@ fn get_type_of_column(csv: &[StringRecord], index: usize) -> CsvType {
     } else {
         CsvType::String
     }
+}
+
+fn get_type_of_column_stream<I: Iterator<Item = csv::Result<StringRecord>>>(
+    csv: &mut I,
+    index: usize,
+) -> csv::Result<CsvType> {
+    let mut distinct_types = HashSet::with_capacity(8);
+    for record in csv {
+        let record = record?;
+        let parsed_type = parse(record.get(index).unwrap()).get_type();
+        distinct_types.insert(parsed_type);
+
+        if distinct_types.contains(&CsvType::String) {
+            return Ok(CsvType::String);
+        }
+    }
+
+    let found_type = if distinct_types.contains(&CsvType::String) {
+        debug!("Distinct types contains String");
+        CsvType::String
+    } else if distinct_types.contains(&CsvType::Integer) && distinct_types.contains(&CsvType::Float)
+    {
+        debug!("Distinct types contains Integer and Float");
+        CsvType::Float
+    } else if distinct_types.len() == 1 {
+        debug!("Distinct types contains single value");
+        distinct_types.iter().next().unwrap().to_owned()
+    } else {
+        debug!("all else");
+        CsvType::String
+    };
+    debug!("distinct types {:?} for index {}", distinct_types, index);
+    Ok(found_type)
 }
 #[cfg(test)]
 mod test {
@@ -126,8 +194,8 @@ mod test {
         let headers = StringRecord::from(vec!["bar"]);
         let records = vec![StringRecord::from(vec!["1"]), StringRecord::from(vec!["2"])];
         let inference = ColumnInference::from_csv(&CsvData {
-            headers,
             records,
+            headers,
             filename,
         });
         assert_eq!(
@@ -145,8 +213,8 @@ mod test {
             StringRecord::from(vec!["2.0"]),
         ];
         let inference = ColumnInference::from_csv(&CsvData {
-            headers,
             records,
+            headers,
             filename,
         });
         assert_eq!(
@@ -164,8 +232,8 @@ mod test {
             StringRecord::from(vec!["entry2", "2.0"]),
         ];
         let inference = ColumnInference::from_csv(&CsvData {
-            headers,
             records,
+            headers,
             filename,
         });
         assert_eq!(
@@ -188,8 +256,8 @@ mod test {
             StringRecord::from(vec!["entry3", "foobar"]),
         ];
         let inference = ColumnInference::from_csv(&CsvData {
-            headers,
             records,
+            headers,
             filename,
         });
         assert_eq!(
@@ -205,16 +273,7 @@ mod test {
     #[test]
     fn it_should_use_default_column_type_if_inference_disabled() {
         let headers = StringRecord::from(vec!["foo", "bar"]);
-        let filename: String = String::from("foo.csv");
-        let records = vec![
-            StringRecord::from(vec!["entry1", "1"]),
-            StringRecord::from(vec!["entry2", "2"]),
-        ];
-        let inference = ColumnInference::default_inference(&CsvData {
-            headers,
-            records,
-            filename,
-        });
+        let inference = ColumnInference::default_inference(&headers);
         assert_eq!(
             inference.get_type(String::from("foo")),
             Some(&CsvType::String)
