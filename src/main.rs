@@ -62,6 +62,12 @@ struct FileType {
 #[derive(Clap)]
 struct Stat {
     filename: String,
+    #[clap(short, long, default_value = ",")]
+    delimiter: char,
+    #[clap(long)]
+    trim: bool,
+    #[clap(long)]
+    textonly: bool,
 }
 fn main() -> Result<(), Box<dyn Error>> {
     SimpleLogger::from_env().init()?;
@@ -103,9 +109,9 @@ fn main() -> Result<(), Box<dyn Error>> {
         SubCommand::Stat(subcmd) => {
             let filename = subcmd.filename;
             let options = Options {
-                delimiter: ',',
-                trim: false,
-                textonly: false,
+                delimiter: subcmd.delimiter,
+                trim: subcmd.trim,
+                textonly: subcmd.textonly,
             };
             let stats = execute_statistics(&filename, &options)?;
             let stdout = std::io::stdout();
