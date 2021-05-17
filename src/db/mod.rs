@@ -3,11 +3,9 @@ use std::str;
 use std::time::Instant;
 
 use log::debug;
-use rusqlite::functions::FunctionFlags;
 use rusqlite::types::ValueRef;
 use rusqlite::{CachedStatement, Connection, Result};
 
-use crate::db::functions::{calculate_md5, calculate_sqrt, Stddev};
 use crate::db::utils::{escape_fields, escape_table, repeat_vars};
 
 mod functions;
@@ -30,26 +28,7 @@ impl Db {
         connection.pragma_update(None, "read_uncommitted", &"true")?;
         connection.pragma_update(None, "wal_autocheckpoint", &0u32)?;
         connection.pragma_update(None, "threads", &8u32)?;
-        connection.create_scalar_function(
-            "md5",
-            1,
-            FunctionFlags::SQLITE_UTF8 | FunctionFlags::SQLITE_DETERMINISTIC,
-            move |ctx| calculate_md5(ctx).map_err(|e| rusqlite::Error::UserFunctionError(e.into())),
-        )?;
-        connection.create_scalar_function(
-            "sqrt",
-            1,
-            FunctionFlags::SQLITE_DETERMINISTIC,
-            move |ctx| {
-                calculate_sqrt(ctx).map_err(|e| rusqlite::Error::UserFunctionError(e.into()))
-            },
-        )?;
-        connection.create_aggregate_function(
-            "stddev",
-            1,
-            FunctionFlags::SQLITE_DETERMINISTIC,
-            Stddev,
-        )?;
+        functions::add_udfs(&connection)?;
         Ok(Db { connection })
     }
 

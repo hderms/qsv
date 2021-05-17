@@ -1,7 +1,30 @@
-use rusqlite::functions::{Aggregate, Context};
-use rusqlite::Result;
-use statistical::population_standard_deviation;
+use rusqlite::functions::{Aggregate, Context, FunctionFlags};
+use rusqlite::{Result, Connection};
+use stats::OnlineStats;
 
+pub(crate) fn add_udfs(connection: &Connection) -> Result<()> {
+    connection.create_scalar_function(
+        "md5",
+        1,
+        FunctionFlags::SQLITE_UTF8 | FunctionFlags::SQLITE_DETERMINISTIC,
+        move |ctx| calculate_md5(ctx).map_err(|e| rusqlite::Error::UserFunctionError(e.into())),
+    )?;
+    connection.create_scalar_function(
+        "sqrt",
+        1,
+        FunctionFlags::SQLITE_DETERMINISTIC,
+        move |ctx| {
+            calculate_sqrt(ctx).map_err(|e| rusqlite::Error::UserFunctionError(e.into()))
+        },
+    )?;
+    connection.create_aggregate_function(
+        "stddev",
+        1,
+        FunctionFlags::SQLITE_DETERMINISTIC,
+        Stddev,
+    )?;
+    Ok(())
+}
 pub(crate) fn calculate_md5(ctx: &Context) -> Result<String> {
     assert_eq!(ctx.len(), 1, "called with unexpected number of arguments");
     let str = ctx.get_raw(0).as_str()?;
@@ -21,19 +44,20 @@ pub(crate) fn calculate_sqrt(ctx: &Context) -> Result<f64> {
 }
 pub struct Stddev;
 
-impl Aggregate<Vec<f64>, Option<f64>> for Stddev {
-    fn init(&self, _: &mut Context<'_>) -> Result<Vec<f64>> {
-        Ok(vec![])
+impl Aggregate<OnlineStats, Option<f64>> for Stddev {
+    fn init(&self, _: &mut Context<'_>) -> Result<OnlineStats> {
+        Ok(OnlineStats::new())
     }
 
-    fn step(&self, ctx: &mut Context<'_>, stdev: &mut Vec<f64>) -> Result<()> {
+    fn step(&self, ctx: &mut Context<'_>, stdev: &mut OnlineStats) -> Result<()> {
         let next = ctx.get::<f64>(0)?;
-        stdev.push(next);
+        stdev.add(next);
         Ok(())
     }
 
-    fn finalize(&self, _: &mut Context<'_>, numbers: Option<Vec<f64>>) -> Result<Option<f64>> {
-        let stddev = numbers.map(|n| population_standard_deviation(&n, None));
+    fn finalize(&self, _: &mut Context<'_>, numbers: Option<OnlineStats>) -> Result<Option<f64>> {
+        let stddev = numbers.map(|n| n.stddev());
         Ok(stddev)
     }
 }
+
