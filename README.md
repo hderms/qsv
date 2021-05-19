@@ -1,11 +1,12 @@
 # qsv
-CLI tool to query CSVs through SQL. Attempts to be fast and provide the full featureset of SQLite
+Performant CLI tool to query CSVs through SQL
 
 ## Installation
 After cloning the repository, you can install a binary locally using `cargo install --path .`
 
 ## Features
 ## Usage/Features
+The intention is for all SQLite syntax to be supported with CSVs as the data source including: joins, subqueries, CTEs, unions, etc...
 ### Simple queries
 qsv supports syntactically valid SQLite queries run on CSV data:
 
@@ -17,11 +18,21 @@ you can escape spaces in a filename like so (you may have to escape backticks de
 
 ```qsv query "select * from `testdata/occupations with spaces.csv`"```
 
+you can load from gzipped CSV data:
+
+```qsv query "select * from testdata/people.csv.gz"```
+
+### Statistical analysis
+qsv can run some limited statistical analyses on a CSV given to it, returning things like the mean, standard deviation, top 10 most common values for each column:
+
+```qsv stats testdata/statistical.csv```
+
 ### SQLite user defined functions
 In order to make some common data analysis tasks simpler, qsv has a number of user defined functions added to SQLite. If there's something you'd like added, please request it as a Github Issue.
 * md5(text)
 * sqrt(real)
 * stddev(real)
+* mean(real)
 
 ### Options
 * `--delimiter=` to set a custom delimiter in the CSVs. Only set globally on the query
